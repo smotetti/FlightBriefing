@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>mEO</title>
+<style>
+:root{--bar:#b4c3c9;--paper:#e8edef;--panel:rgba(255,255,255,.95);--ink:#12232b;--muted:#566a72;--line:#c6d2d6;--teal:#0e7a7a;--on-teal:#fff;
+  --body:"Avenir Next",-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif}
+@media (prefers-color-scheme:dark){:root{--paper:#0d1619;--panel:rgba(22,37,43,.94);--ink:#e5eef0;--muted:#8ea4ac;--line:#2a3e46;--teal:#38b6b6;--on-teal:#04181a}}
+*{box-sizing:border-box}[hidden]{display:none !important}
+body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.45 var(--body);
+  padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+.photo::before{content:"";position:fixed;inset:0;z-index:-1;background:linear-gradient(rgba(8,18,22,.28),rgba(8,18,22,.5)),var(--photo) center/cover no-repeat}
+main,.top{max-width:1130px;margin:0 auto}
+.top{margin-bottom:16px;display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px;background:var(--bar);color:#12232b;border-radius:14px;padding:14px 22px}
+.top img{display:block;height:64px;width:auto;max-width:60%}.top h1{margin:0;font-size:22px;font-weight:650}
+.tiles{display:grid;gap:16px}@media (min-width:760px){.tiles{grid-template-columns:repeat(3,1fr)}}
+.tile{display:block;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;color:inherit;text-decoration:none;min-height:150px}
+.tile h2{margin:0 0 8px;font-size:21px}.tile p{margin:0;color:var(--muted)}
+.tile.soon{opacity:.85}
+.tag{display:inline-block;margin-top:12px;font-size:14px;font-weight:650;color:var(--on-teal);background:var(--teal);border-radius:8px;padding:2px 10px}
+:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+</style>
+</head>
+<body>
+<header class="top"><img id="logo" src="logo.png" alt="Air Dolomiti" onerror="this.hidden=true"><h1>mEO</h1></header>
+<main><div class="tile" style="min-height:0"><h2>mEO</h2><p>Single engine departure procedures for every airport. This program is not built yet.</p></div></main>
+<script>
+(function findPhoto(list){
+  var n = list.shift(); if(!n) return;
+  var im = new Image();
+  im.onload = function(){ document.body.style.setProperty("--photo", 'url("' + n + '")'); document.body.classList.add("photo"); };
+  im.onerror = function(){ findPhoto(list); };
+  im.src = n;
+})(["background.jpg","background.jpeg","background.png","background.webp","Background.jpg","background.JPG","background.JPEG","background.PNG"]);
+</script>
+<script src="menu.js"></script>
+</body>
+</html>

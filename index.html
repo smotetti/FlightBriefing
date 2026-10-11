@@ -3,284 +3,44 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<title>Dry operating weight and index</title>
+<title>Pilot tools</title>
 <style>
-:root{
-  --bar:#b4c3c9; --paper:#e8edef; --panel:rgba(255,255,255,.95); --ink:#12232b; --muted:#566a72; --line:#c6d2d6;
-  --teal:#0e7a7a; --on-teal:#ffffff; --fig:#12232b; --on-fig:#f1f6f7; --fig-muted:#9bb3ba; --warn:#a64a00;
-  --num:"Avenir Next Condensed","Arial Narrow","Helvetica Neue",sans-serif;
-  --body:"Avenir Next",-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif;
-}
-@media (prefers-color-scheme:dark){
-  :root{--paper:#0d1619; --panel:rgba(22,37,43,.94); --ink:#e5eef0; --muted:#8ea4ac; --line:#2a3e46;
-    --teal:#38b6b6; --on-teal:#04181a; --fig:#050b0d; --on-fig:#f1f6f7; --fig-muted:#7d959d; --warn:#eb9a55}
-}
-*{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
+:root{--bar:#b4c3c9;--paper:#e8edef;--panel:rgba(255,255,255,.95);--ink:#12232b;--muted:#566a72;--line:#c6d2d6;--teal:#0e7a7a;--on-teal:#fff;
+  --body:"Avenir Next",-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif}
+@media (prefers-color-scheme:dark){:root{--paper:#0d1619;--panel:rgba(22,37,43,.94);--ink:#e5eef0;--muted:#8ea4ac;--line:#2a3e46;--teal:#38b6b6;--on-teal:#04181a}}
+*{box-sizing:border-box}[hidden]{display:none !important}
 body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.45 var(--body);
   padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
-main{max-width:1100px;margin:0 auto}
-h1{font-size:22px;font-weight:650;margin:4px 0 16px}
-h2{font-size:17px;font-weight:650;margin:0 0 8px}
-.grid{display:grid;gap:16px}
-@media (min-width:820px){.grid{grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);align-items:start}
-  .figures{position:sticky;top:16px}}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
-.field{margin-bottom:18px}.field:last-child{margin-bottom:0}
-.hint{color:var(--muted);font-size:15px;margin:6px 0 0}
-select{width:100%;min-height:52px;font:inherit;font-size:19px;color:var(--ink);background:var(--paper);
-  border:1px solid var(--line);border-radius:10px;padding:0 12px}
-.seg{display:flex;flex-wrap:wrap;gap:8px}
-.seg button,.btn{min-height:52px;padding:0 16px;font:inherit;font-size:18px;color:var(--ink);background:var(--paper);
-  border:1.5px solid var(--line);border-radius:10px;cursor:pointer}
-.seg button[aria-pressed=true]{background:var(--teal);border-color:var(--teal);color:var(--on-teal);font-weight:650}
-.step{display:flex;align-items:center;gap:12px}
-.step button{width:56px;padding:0;font-size:26px}
-.step output{min-width:48px;text-align:center;font:600 34px var(--num)}
-.figures .panel{background:var(--fig);color:var(--on-fig);border-color:var(--fig)}
-.fig{padding:14px 0;border-bottom:1px solid rgba(155,179,186,.25)}
-.fig:last-of-type{border-bottom:0}
-.fig .label{color:var(--fig-muted);font-size:16px}
-.fig .val{font:600 clamp(48px,8vw,78px)/1 var(--num);letter-spacing:.01em;font-variant-numeric:tabular-nums}
-.fig .val small{font:400 22px var(--body);color:var(--fig-muted);margin-left:8px}
-.fig.off .val{font-size:26px;color:var(--fig-muted);font-family:var(--body);font-weight:400}
-.sum{color:var(--fig-muted);font-size:15px;margin:10px 0 0}
-.corr{margin:12px 0 0;padding:0;list-style:none;color:var(--on-fig);font-size:15px}
-.corr li{display:flex;justify-content:space-between;gap:12px;padding:3px 0}
-.err{color:var(--warn);font-weight:600}
-.foot{margin-top:16px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 16px;color:var(--muted);font-size:15px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
-.btn.small{min-height:44px;font-size:16px}
-.import{max-width:560px;margin:24px auto}
-.photo::before{content:"";position:fixed;inset:0;z-index:-1;
-  background:linear-gradient(rgba(8,18,22,.28),rgba(8,18,22,.5)),var(--photo) center/cover no-repeat}
-.top{max-width:1100px;margin:0 auto 16px;display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px;
-  background:var(--bar);color:#12232b;border-radius:14px;padding:14px 22px}
-.top img{display:block;height:64px;width:auto;max-width:60%}
-.top img[hidden]{display:none}
-.top h1{margin:0;font-size:22px;font-weight:650}
-.flight{margin-top:16px}
-.cols{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
-.flight h3{font-size:16px;font-weight:650;margin:0 0 6px}
-.flight p{margin:0 0 4px}.flight .big{font:600 30px/1.1 var(--num);margin-bottom:6px}
-.flight .names{margin:0;padding:0;list-style:none}
-.flight .names li{display:flex;gap:12px;padding:2px 0}.flight .names b{min-width:44px;font-weight:650}
-.flight .issue{padding:6px 0;border-top:1px solid var(--line)}.flight .issue:first-of-type{border-top:0}
+.photo::before{content:"";position:fixed;inset:0;z-index:-1;background:linear-gradient(rgba(8,18,22,.28),rgba(8,18,22,.5)),var(--photo) center/cover no-repeat}
+main,.top{max-width:1130px;margin:0 auto}
+.top{margin-bottom:16px;display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px;background:var(--bar);color:#12232b;border-radius:14px;padding:14px 22px}
+.top img{display:block;height:64px;width:auto;max-width:60%}.top h1{margin:0;font-size:22px;font-weight:650}
+.tiles{display:grid;gap:16px}@media (min-width:760px){.tiles{grid-template-columns:repeat(3,1fr)}}
+.tile{display:block;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;color:inherit;text-decoration:none;min-height:150px}
+.tile h2{margin:0 0 8px;font-size:21px}.tile p{margin:0;color:var(--muted)}
+.tile.soon{opacity:.85}
+.tag{display:inline-block;margin-top:12px;font-size:14px;font-weight:650;color:var(--on-teal);background:var(--teal);border-radius:8px;padding:2px 10px}
 :focus-visible{outline:3px solid var(--teal);outline-offset:2px}
 </style>
 </head>
 <body>
-<header class="top"><img id="logo" src="logo.png" alt="Air Dolomiti" onerror="this.hidden=true"><h1>Dry operating weight and index</h1></header>
-<main id="app"></main>
-<input id="file" type="file" accept=".json,application/json" hidden>
+<header class="top"><img id="logo" src="logo.png" alt="Air Dolomiti" onerror="this.hidden=true"><h1>Pilot tools</h1></header>
+<main>
+  <div class="tiles">
+    <a class="tile" href="dow.html"><h2>DOW and DOI calculator</h2><p>Dry operating weight and index for any aircraft, operation and crew setup.</p></a>
+    <a class="tile" href="briefing.html"><h2>Flight briefing</h2><p>Briefing cards for your flights, ready to save as a PDF.</p></a>
+    <a class="tile soon" href="meo.html"><h2>mEO</h2><p>Single engine departure procedures for every airport.</p><span class="tag">Coming soon</span></a>
+  </div>
+</main>
 <script>
-"use strict";
-var KEY = "dowdoi.weights.v1";
-var OPS = [["SCHEDULED","Scheduled"],["CHARTER","Charter"],["FERRY","Ferry, training, test"]];
-var TROL = [["all","All loaded"],["trolleysOnly","Trolleys only"],["none","No trolleys"]];
-var W = null, memoryOnly = false, F = null;
-function normReg(r){ r = String(r || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); return /^I[A-Z0-9]{4}$/.test(r) ? "I-" + r.slice(1) : r; }
-function decodeFlight(d){
-  var b = d.replace(/-/g, "+").replace(/_/g, "/"); while(b.length % 4) b += "=";
-  return JSON.parse(decodeURIComponent(escape(atob(b))));
-}
-function cfgFromCrew(crew){
-  var cab = crew.filter(function(c){ return c.role === "AVR"; }).length, pil = crew.length - cab;
-  return pil >= 2 && pil <= 3 ? pil + "+" + cab : null;
-}
-var S = {reg:"", op:"SCHEDULED", cfg:"2+3", bags:5, trol:"all", pantry:false};
-
-function loadStored(){ try{ var t = localStorage.getItem(KEY); if(t) W = JSON.parse(t); }catch(e){} }
-function store(){ try{ localStorage.setItem(KEY, JSON.stringify(W)); memoryOnly=false; }catch(e){ memoryOnly=true; } }
-
-function typeOf(reg){
-  for(var t in W.tables){ var a = W.tables[t].SCHEDULED && W.tables[t].SCHEDULED.aircraft; if(a && a[reg]) return t; }
-  return null;
-}
-function allRegs(){
-  var out = [];
-  for(var t in W.tables){ var a = W.tables[t].SCHEDULED ? Object.keys(W.tables[t].SCHEDULED.aircraft) : [];
-    out.push({type:t, regs:a}); }
-  return out;
-}
-function crewOf(cfg){ var p = cfg.split("+"); return (+p[0]) + (+p[1]); }
-function r2(x){ return Math.round((x + Number.EPSILON) * 100) / 100; }
-function fmtDoi(x){ return x.toFixed(2).replace(".", ","); }
-function sgn(n){ return (n < 0 ? "\u2212" : "+") + Math.abs(n); }
-function sgnDoi(n){ return (n < 0 ? "\u2212" : "+") + Math.abs(n).toFixed(2).replace(".", ","); }
-
-function compute(w, s){
-  var type = null;
-  for(var t in w.tables){ var a = w.tables[t].SCHEDULED && w.tables[t].SCHEDULED.aircraft; if(a && a[s.reg]){ type = t; break; } }
-  if(!type) return {error:"Registration not found in the tables."};
-  var table = w.tables[type][s.op];
-  if(!table || !table.aircraft[s.reg]) return {error:"No " + s.op.toLowerCase() + " table for this aircraft."};
-  var row = table.aircraft[s.reg][s.cfg];
-  if(!row) return {error:"Configuration " + s.cfg + " is not in this table."};
-  var c = table.corrections || {};
-  var dow = row.dow, doi = row.doi, fwd = (row.doiFwd === undefined ? null : row.doiFwd);
-  var lines = [];
-  function apply(label, k, times){
-    if(!c[k] || !times) return;
-    dow += c[k].dow * times; doi += c[k].doi * times; if(fwd !== null) fwd += c[k].doi * times;
-    lines.push([label + (times > 1 ? " \u00d7 " + times : ""), sgn(c[k].dow * times) + " kg, " + sgnDoi(c[k].doi * times)]);
-  }
-  if(s.trol === "trolleysOnly") apply("Trolleys only", "trolleysOnly", 1);
-  if(s.trol === "none") apply("No trolleys", "noTrolleys", 1);
-  if(s.pantry && c.pantryCht) apply("Pantry CHT", "pantryCht", 1);
-  var crew = crewOf(s.cfg), missing = Math.max(0, crew - s.bags);
-  apply("Crew bag missing", "crewBagEach", missing);
-  return {type:type, dow:Math.round(dow), doi:r2(doi), fwd:(fwd === null ? null : r2(fwd)),
-          lines:lines, revision:(w.revisions||{})[type] || ""};
-}
-
-function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
-
-function normalise(){
-  if(!W) return;
-  if(!S.reg || !typeOf(S.reg)){ var g = allRegs(); S.reg = g.length && g[0].regs.length ? g[0].regs[0] : ""; }
-  var type = typeOf(S.reg), tb = type && W.tables[type][S.op];
-  if(!tb){ S.op = "SCHEDULED"; tb = W.tables[type][S.op]; }
-  var cfgs = Object.keys(tb.aircraft[S.reg]);
-  if(cfgs.indexOf(S.cfg) < 0){ S.cfg = cfgs.indexOf("2+3") >= 0 ? "2+3" : cfgs[0]; S.bags = crewOf(S.cfg); }
-  if(S.bags > crewOf(S.cfg)) S.bags = crewOf(S.cfg);
-  if(S.bags < 0) S.bags = 0;
-  if(!(tb.corrections && tb.corrections.pantryCht)) S.pantry = false;
-}
-
-function seg(name, items, current){
-  return '<div class="seg" role="group">' + items.map(function(it){
-    return '<button type="button" data-set="' + name + '" data-v="' + esc(it[0]) + '" aria-pressed="' + (it[0] === current) + '">' + esc(it[1]) + '</button>';
-  }).join("") + '</div>';
-}
-
-function flightPanel(){
-  if(!F) return "";
-  var f = F.flight || {}, h = '<div class="panel flight"><h2>Flight data from the portal</h2>';
-  if(F.errors && F.errors.length) h += '<p class="err">' + F.errors.map(esc).join("<br>") + '</p>';
-  if(!F.flight) return h + '</div>';
-  h += '<div class="cols"><div><div class="big">' + esc(f.number) + ', ' + esc(f.callsign) + '</div>' +
-    '<p>' + esc(f.from) + ' to ' + esc(f.to) + ', ' + esc(f.date) + '</p>' +
-    '<p>STD ' + esc(f.std) + ', STA ' + esc(f.sta) + '</p>' +
-    '<p>' + esc(f.registration) + (f.aircraftType ? ', ' + esc(f.aircraftType) : '') + '</p></div>';
-  h += '<div><h3>Crew on duty</h3><ul class="names">' + (F.crew || []).map(function(c){
-    return '<li><b>' + esc(c.role) + '</b><span>' + esc(c.name) + '</span></li>'; }).join("") + '</ul></div>';
-  h += '<div><h3>Passengers booked</h3><p>Business ' + esc((F.pax||{}).business) + ', economy ' + esc((F.pax||{}).economy) + '</p>' +
-    '<h3 style="margin-top:14px">Technical issues</h3>' +
-    ((F.mel && F.mel.length) ? F.mel.map(function(m){
-      return '<div class="issue"><p>' + esc(m.ata) + '</p><p>' + esc(m.description) + '</p><p>' + esc(m.ref) + ', ' + esc(m.deferment) + ', opened ' + esc(m.openDate) + '</p></div>'; }).join("") : '<p>None listed</p>') +
-    '</div></div></div>';
-  return h;
-}
-
-function render(){
-  var app = document.getElementById("app");
-  if(!W){
-    app.innerHTML = '<div class="import panel"><h1>Load the weight tables</h1>' +
-      '<p>Choose the weights file saved on this iPad. It stays on this device and is never uploaded.</p>' +
-      '<button class="btn" id="pick" type="button">Choose weights file</button><p class="err" id="msg"></p></div>';
-    return;
-  }
-  normalise();
-  var type = typeOf(S.reg), tb = W.tables[type][S.op], cfgs = Object.keys(tb.aircraft[S.reg]);
-  var res = compute(W, S);
-  var opts = allRegs().map(function(g){
-    return '<optgroup label="' + esc(g.type) + '">' + g.regs.map(function(r){
-      return '<option value="' + esc(r) + '"' + (r === S.reg ? " selected" : "") + '>' + esc(r) + '</option>'; }).join("") + '</optgroup>';
-  }).join("");
-  var crew = crewOf(S.cfg), pil = S.cfg.split("+")[0], cab = S.cfg.split("+")[1];
-  var hasPantry = !!(tb.corrections && tb.corrections.pantryCht);
-  var left =
-    '<div class="panel"><h2>Flight setup</h2>' +
-    '<div class="field"><label for="reg">Registration</label><select id="reg">' + opts + '</select></div>' +
-    '<div class="field"><div>Operation</div>' + seg("op", OPS, S.op) + '</div>' +
-    '<div class="field"><div>Crew configuration</div>' +
-      seg("cfg", cfgs.map(function(k){ return [k, k.replace("+", " + ")]; }), S.cfg) +
-      '<p class="hint">' + esc(pil) + ' pilots and ' + esc(cab) + ' cabin crew</p></div>' +
-    '<div class="field"><div>Crew bags on board</div><div class="step">' +
-      '<button class="btn" type="button" data-bags="-1" aria-label="One fewer bag">\u2212</button>' +
-      '<output>' + S.bags + '</output>' +
-      '<button class="btn" type="button" data-bags="1" aria-label="One more bag">+</button></div>' +
-      '<p class="hint">Standard is ' + crew + ', one per crew member</p></div>' +
-    '<div class="field"><div>Trolleys</div>' + seg("trol", TROL, S.trol) + '</div>' +
-    (hasPantry ? '<div class="field"><div>Pantry</div><div class="seg"><button type="button" data-pantry="1" aria-pressed="' + S.pantry + '">Pantry CHT</button></div></div>' : '') +
-    '</div>';
-  var right;
-  if(res.error){
-    right = '<div class="figures"><div class="panel"><p class="err">' + esc(res.error) + '</p></div></div>';
-  } else {
-    var fwdOn = res.fwd !== null;
-    right = '<div class="figures"><div class="panel">' +
-      '<div class="fig"><div class="label">Dry operating weight</div><div class="val">' + res.dow + '<small>kg</small></div></div>' +
-      '<div class="fig"><div class="label">Dry operating index</div><div class="val">' + fmtDoi(res.doi) + '</div></div>' +
-      '<div class="fig' + (fwdOn ? "" : " off") + '"><div class="label">Dry operating index, CA3 forward</div><div class="val">' +
-        (fwdOn ? fmtDoi(res.fwd) : "Not available for this configuration") + '</div></div>' +
-      '<p class="sum">' + esc(S.reg) + ', ' + esc(res.type) + ', ' + esc(OPS.filter(function(o){return o[0]===S.op;})[0][1].toLowerCase()) +
-        (res.revision ? ', table revision ' + esc(res.revision) : '') + '</p>' +
-      (res.lines.length ? '<ul class="corr">' + res.lines.map(function(l){ return '<li><span>' + esc(l[0]) + '</span><span>' + esc(l[1]) + '</span></li>'; }).join("") + '</ul>' : '') +
-      '</div></div>';
-  }
-  app.innerHTML = '<div class="grid">' + left + right + '</div>' +
-    flightPanel() + '<div class="foot"><span>' + (memoryOnly ? "Tables are held for this visit only; this browser would not save them." : "Weight tables are saved on this iPad.") +
-    '</span><button class="btn small" id="pick" type="button">Replace weights file</button></div>';
-}
-
-document.addEventListener("click", function(e){
-  var t = e.target.closest("button"); if(!t) return;
-  if(t.id === "pick"){ document.getElementById("file").click(); return; }
-  if(t.dataset.set){
-    var k = t.dataset.set; S[k] = t.dataset.v;
-    if(k === "cfg") S.bags = crewOf(S.cfg);
-    render(); return;
-  }
-  if(t.dataset.bags){ S.bags += +t.dataset.bags; render(); return; }
-  if(t.dataset.pantry){ S.pantry = !S.pantry; render(); }
-});
-document.addEventListener("change", function(e){
-  if(e.target.id === "reg"){ S.reg = e.target.value; render(); }
-  if(e.target.id === "file" && e.target.files[0]){
-    var rd = new FileReader();
-    rd.onload = function(){
-      try{
-        var j = JSON.parse(rd.result);
-        if(!j.tables) throw new Error("This file has no weight tables.");
-        W = j; store(); render();
-      }catch(err){
-        render(); var m = document.getElementById("msg"); if(m) m.textContent = "Could not read that file: " + err.message;
-      }
-    };
-    rd.readAsText(e.target.files[0]); e.target.value = "";
-  }
-});
-
-(function init(){
-  (function findPhoto(list){
-    var n = list.shift(); if(!n) return;
-    var im = new Image();
-    im.onload = function(){ document.body.style.setProperty("--photo", 'url("' + n + '")'); document.body.classList.add("photo"); };
-    im.onerror = function(){ findPhoto(list); };
-    im.src = n;
-  })(["background.jpg","background.jpeg","background.png","background.webp","Background.jpg","background.JPG","background.JPEG","background.PNG"]);
-  loadStored();
-  var h = new URLSearchParams(location.hash.slice(1)), raw = h.get("d");
-  if(raw){
-    try{ F = decodeFlight(raw); try{ sessionStorage.setItem("dowdoi.flight", JSON.stringify(F)); }catch(e){} }
-    catch(e){ F = {errors:["The flight data could not be read. Run the shortcut again."]}; }
-    try{ history.replaceState(null, "", location.pathname + location.search); }catch(e){}
-  } else {
-    try{ var t = sessionStorage.getItem("dowdoi.flight"); if(t) F = JSON.parse(t); }catch(e){}
-  }
-  if(F && F.flight){
-    if(F.flight.registration) S.reg = normReg(F.flight.registration);
-    var cc = cfgFromCrew(F.crew || []); if(cc){ S.cfg = cc; S.bags = crewOf(cc); }
-  }
-  if(h.get("reg")) S.reg = normReg(h.get("reg"));
-  if(h.get("op")) S.op = h.get("op").toUpperCase();
-  if(h.get("cfg")) { S.cfg = h.get("cfg").replace(/\s/g, ""); S.bags = crewOf(S.cfg); }
-  if(h.get("bags") !== null && h.get("bags") !== "") S.bags = +h.get("bags");
-  render();
-})();
-window.__t = {compute:compute, S:S, render:render, setW:function(w){ W = w; }};
+(function findPhoto(list){
+  var n = list.shift(); if(!n) return;
+  var im = new Image();
+  im.onload = function(){ document.body.style.setProperty("--photo", 'url("' + n + '")'); document.body.classList.add("photo"); };
+  im.onerror = function(){ findPhoto(list); };
+  im.src = n;
+})(["background.jpg","background.jpeg","background.png","background.webp","Background.jpg","background.JPG","background.JPEG","background.PNG"]);
 </script>
+<script src="menu.js"></script>
 </body>
 </html>
