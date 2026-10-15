@@ -312,7 +312,7 @@ function loadDeck(){
 }
 function sortDeck(){ D.cards.sort(function(a, b){ var x = dateKey(a.flight.date) + (a.flight.std || ""), y = dateKey(b.flight.date) + (b.flight.std || ""); return x < y ? -1 : x > y ? 1 : 0; }); }
 function addCard(o){
-  if(!o || !o.flight){ INTAKE = (o && o.errors && o.errors.length) ? o.errors : ["No flight data was received. Run the shortcut again."]; return; }
+  if(!o || !o.flight){ INTAKE = (o && o.errors && o.errors.length) ? o.errors : ["No flight data was received. Tap Briefing on the flight's Details page again."]; return; }
   INTAKE = [];
   var f = o.flight, id = [f.date, f.number, f.from, f.to].join("|");
   var card = D.cards.filter(function(c){ return c.id === id; })[0], isNew = !card;
@@ -331,7 +331,7 @@ function render(){
   var app = document.getElementById("app"), h = "";
   if(INTAKE.length) h += '<div class="panel"><p class="err">' + INTAKE.map(esc).join("<br>") + '</p></div>';
   if(!D.cards.length){
-    h += '<div class="panel"><h2>No flights yet</h2><p>Open a flight\'s Details page on the portal and run the shortcut. The flight appears here as a card.</p></div>';
+    h += '<div class="panel"><h2>No flights yet</h2><p>Open a flight\'s Details page on the portal and tap Briefing in your Safari Favorites. The flight appears here as a card.</p></div>';
   } else {
     var c = curCard(), n = counts(c.crew), max = n.p + n.c, res = cardRes(c);
     var chips = D.cards.map(function(x){ return '<button type="button" data-card="' + esc(x.id) + '" aria-pressed="' + (x.id === D.sel) + '">' + esc(x.flight.number) + ', ' + esc(x.flight.from) + ' to ' + esc(x.flight.to) + '</button>'; }).join("");
@@ -348,7 +348,7 @@ function render(){
       '<div class="row2"><button class="btn small" type="button" data-remove="1">Remove this flight</button><button class="btn small" type="button" data-clear="1">Clear all flights</button></div></div>';
     h += '<div class="paper" id="paper">' + buildPages().map(svgPage).join("") + '</div>';
   }
-  h += '<div class="panel"><p class="hint" style="margin:0 0 10px">' + (W ? 'Weight tables are loaded.' : 'The weight tables are not loaded, so DOW and DOI show -- on the cards.') + '</p><button class="btn small" id="pick" type="button">' + (W ? 'Replace weights file' : 'Choose weights file') + '</button></div>';
+  h += '<div class="panel"><p class="hint" style="margin:0 0 10px">' + (W ? 'Weight tables are loaded.' : 'The weight tables are not loaded, so DOW and DOI show -- on the cards.') + '</p><button class="btn small" id="pick" type="button">' + (W ? 'Replace weights file' : 'Choose weights file') + '</button> <a class="btn small" style="margin-left:8px" href="bookmarklet.html">Set up the import button</a></div>';
   app.innerHTML = h;
 }
 function makePdf(){
@@ -404,7 +404,7 @@ function loadLogo(){
   loadDeck();
   var h = new URLSearchParams(location.hash.slice(1)), raw = h.get("d");
   if(raw){
-    try{ addCard(decodeFlight(raw)); }catch(e){ INTAKE = ["The flight data could not be read. Run the shortcut again."]; }
+    try{ addCard(decodeFlight(raw)); }catch(e){ INTAKE = ["The flight data could not be read. Tap Briefing on the flight's Details page again."]; }
     try{ history.replaceState(null, "", location.pathname + location.search); }catch(e){}
   }
   loadLogo(); render();

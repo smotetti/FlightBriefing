@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Import button</title>
+<style>
+:root{--bar:#b4c3c9;--paper:#e8edef;--panel:rgba(255,255,255,.95);--ink:#12232b;--muted:#566a72;--line:#c6d2d6;--teal:#0e7a7a;--on-teal:#fff;
+  --body:"Avenir Next",-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif}
+@media (prefers-color-scheme:dark){:root{--paper:#0d1619;--panel:rgba(22,37,43,.94);--ink:#e5eef0;--muted:#8ea4ac;--line:#2a3e46;--teal:#38b6b6;--on-teal:#04181a}}
+*{box-sizing:border-box}[hidden]{display:none !important}
+body{margin:0;background:var(--paper);color:var(--ink);font:18px/1.5 var(--body);
+  padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+.photo::before{content:"";position:fixed;inset:0;z-index:-1;background:linear-gradient(rgba(8,18,22,.28),rgba(8,18,22,.5)),var(--photo) center/cover no-repeat}
+main,.top{max-width:900px;margin:0 auto}
+.top{margin-bottom:16px;display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px;background:var(--bar);color:#12232b;border-radius:14px;padding:14px 22px}
+.top img{display:block;height:64px;width:auto;max-width:60%}.top h1{margin:0;font-size:22px;font-weight:650}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+h2{margin:0 0 10px;font-size:19px}ol{margin:0;padding-left:22px}li{margin-bottom:10px}
+textarea{width:100%;height:110px;font:13px/1.3 ui-monospace,Menlo,monospace;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px}
+.btn{min-height:56px;padding:0 20px;font:inherit;font-size:19px;font-weight:650;color:var(--on-teal);background:var(--teal);border:0;border-radius:12px;cursor:pointer;margin:10px 0}
+.msg{color:var(--muted);margin:4px 0 0}
+</style>
+</head>
+<body>
+<header class="top"><img id="logo" src="logo.png" alt="Air Dolomiti" onerror="this.hidden=true"><h1>Import button</h1></header>
+<main>
+  <div class="panel">
+    <h2>Set up once</h2>
+    <ol>
+      <li>Tap <b>Copy code</b> below.</li>
+      <li>In Safari tap <b>Share</b>, then <b>Add Bookmark</b>. Name it <b>Briefing</b>, choose <b>Favorites</b> and save. This only saves this page for now.</li>
+      <li>Open your bookmarks (the book icon), choose <b>Favorites</b>, tap <b>Edit</b> and tap <b>Briefing</b>. Delete the address and paste the code you copied. Tap <b>Done</b>.</li>
+    </ol>
+    <button class="btn" id="copy" type="button">Copy code</button>
+    <p class="msg" id="msg"></p>
+    <textarea id="code" readonly aria-label="Bookmark code"></textarea>
+  </div>
+  <div class="panel">
+    <h2>Use it on every flight</h2>
+    <ol>
+      <li>Log into the portal and open the flight's <b>Details</b> page.</li>
+      <li>Tap the address bar and tap <b>Briefing</b> in your Favorites.</li>
+      <li>Wait a few seconds. The flight briefing page opens with the flight added.</li>
+    </ol>
+  </div>
+</main>
+<script>
+function collect(BASE, go){
+  go = go || function(u){ location.href = u; };
+  function clean(s){ return (s || "").replace(/\s+/g, " ").trim(); }
+  function txt(doc, sel){ var e = doc.querySelector(sel); return e ? clean(e.textContent) : ""; }
+  function cellsOf(row){ return row ? Array.prototype.slice.call(row.querySelectorAll("td")) : []; }
+  function lastCell(row){ var c = cellsOf(row); return c.length >= 2 ? clean(c[c.length - 1].textContent) : ""; }
+  function parseDetails(doc){
+    return {number: txt(doc, "#lblFlight"), callsign: txt(doc, "#lblCallSign"), registration: txt(doc, "#lblAC"), aircraftType: txt(doc, "#lblOPSACType"),
+      from: txt(doc, "#lblFrom"), to: txt(doc, "#lblTo"), std: txt(doc, "#lblSTD"), sta: txt(doc, "#lblSTA")};
+  }
+  function parseCrew(doc){
+    var table = doc.querySelector("#crewTable"), crew = [];
+    if(!table) return crew;
+    var onDuty = false;
+    Array.prototype.slice.call(table.querySelectorAll("tr")).forEach(function(row){
+      var title = row.querySelector("td.Title[colspan]");
+      if(title){ onDuty = clean(title.textContent).indexOf("On Duty") !== -1; return; }
+      var c = cellsOf(row);
+      if(onDuty && c.length === 2){
+        var role = clean(c[0].textContent), name = clean(c[1].textContent);
+        if(role && name) crew.push({role: role, name: name});
+      }
+    });
+    return crew;
+  }
+  function parseCatering(doc){
+    var table = doc.querySelector("#cateringTable"), max = {};
+    if(table){
+      Array.prototype.slice.call(table.querySelectorAll("tr")).forEach(function(row){
+        var c = cellsOf(row);
+        if(c.length < 6 || clean(c[0].textContent) !== "Class:") return;
+        var cls = clean(c[1].textContent), q = parseInt(clean(c[5].textContent), 10);
+        if(cls && !isNaN(q) && (!(cls in max) || q > max[cls])) max[cls] = q;
+      });
+    }
+    return {business: max["C"] || 0, economy: max["M"] || 0};
+  }
+  function parseMel(doc){
+    var rows = Array.prototype.slice.call(doc.querySelectorAll("table tr")), issues = [];
+    for(var i = 0; i < rows.length; i++){
+      var c = cellsOf(rows[i]);
+      if(c.length < 2 || clean(c[c.length - 2].textContent) !== "MEL and ATA Chapter:") continue;
+      issues.push({ata: clean(c[c.length - 1].textContent), description: lastCell(rows[i + 1]), deferment: lastCell(rows[i + 2]), ref: lastCell(rows[i + 3]), openDate: lastCell(rows[i + 4])});
+    }
+    return issues;
+  }
+  function tabUrl(id, pageName){
+    var a = document.getElementById(id), h = a && a.getAttribute("href");
+    if(h && h !== "#") return new URL(h, location.href).href;
+    return location.href.replace(/detailturnobb\.aspx/i, pageName);
+  }
+  function getDoc(url){
+    return fetch(url, {credentials: "include"}).then(function(r){
+      if(!r.ok) throw new Error("HTTP " + r.status);
+      return r.text();
+    }).then(function(t){ return new DOMParser().parseFromString(t, "text/html"); });
+  }
+  function encode(obj){
+    return btoa(unescape(encodeURIComponent(JSON.stringify(obj)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+  var banner = null;
+  try{
+    banner = document.createElement("div");
+    banner.textContent = "Collecting flight data...";
+    banner.style.cssText = "position:fixed;left:0;right:0;top:0;z-index:2147483647;background:#0e7a7a;color:#fff;font:600 20px -apple-system,Helvetica,Arial,sans-serif;padding:16px;text-align:center";
+    document.body.appendChild(banner);
+  }catch(e){}
+  var out = {v: 1, flight: null, crew: [], pax: {business: 0, economy: 0}, mel: [], errors: []}, done = false;
+  function finish(){ if(done) return; done = true; go(BASE + encode(out)); }
+  if(!/detailturnobb/i.test(location.pathname)){
+    out.errors.push("Open a flight's Details page first, then tap Briefing again.");
+    finish(); return;
+  }
+  out.flight = parseDetails(document);
+  out.flight.date = new URLSearchParams(location.search).get("DataRif") || "";
+  function step(label, id, page, parse, assign){
+    return getDoc(tabUrl(id, page)).then(function(doc){ assign(parse(doc)); })
+      .catch(function(e){ out.errors.push(label + " page could not be read (" + e.message + ")."); });
+  }
+  setTimeout(function(){ out.errors.push("Some pages took too long to load."); finish(); }, 25000);
+  Promise.all([
+    step("Crew", "crewLink", "crewturnoBB.aspx", parseCrew, function(v){ out.crew = v; }),
+    step("Catering", "cateringLink", "cateringturnoBB.aspx", parseCatering, function(v){ out.pax = v; }),
+    step("Technical", "steccaLink", "SteccaturnoBB.aspx", parseMel, function(v){ out.mel = v; })
+  ]).then(finish);
+}
+function bookmarkletCode(){
+  var base = new URL("briefing.html", location.href).href.split("#")[0] + "#d=";
+  return "javascript:" + encodeURIComponent("void((" + collect.toString() + ")(" + JSON.stringify(base) + "))");
+}
+(function(){
+  var code = document.getElementById("code"), msg = document.getElementById("msg");
+  code.value = bookmarkletCode();
+  document.getElementById("copy").addEventListener("click", function(){
+    function ok(){ msg.textContent = "Copied. Now follow step 2 and step 3."; }
+    function fallback(){ code.focus(); code.select(); code.setSelectionRange(0, code.value.length); try{ document.execCommand("copy"); ok(); }catch(e){ msg.textContent = "Tap the box, choose Select All, then Copy."; } }
+    if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code.value).then(ok, fallback); else fallback();
+  });
+  (function findPhoto(list){
+    var n = list.shift(); if(!n) return;
+    var im = new Image();
+    im.onload = function(){ document.body.style.setProperty("--photo", 'url("' + n + '")'); document.body.classList.add("photo"); };
+    im.onerror = function(){ findPhoto(list); };
+    im.src = n;
+  })(["background.jpg","background.jpeg","background.png","background.webp","Background.jpg","background.JPG","background.JPEG","background.PNG"]);
+})();
+window.__collect = collect; window.__bookmarkletCode = bookmarkletCode;
+</script>
+<script src="menu.js"></script>
+</body>
+</html>
