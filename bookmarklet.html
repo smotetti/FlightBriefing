@@ -39,9 +39,10 @@ textarea{width:100%;height:110px;font:13px/1.3 ui-monospace,Menlo,monospace;colo
   <div class="panel">
     <h2>Use it on every flight</h2>
     <ol>
-      <li>Log into the portal and open the flight's <b>Details</b> page.</li>
+      <li>Log into the portal and open the <b>duty plan</b> page (the list of your days and flights).</li>
       <li>Tap the address bar and tap <b>Briefing</b> in your Favorites.</li>
-      <li>Wait a few seconds. The flight briefing page opens with the flight added.</li>
+      <li>Wait while it collects every flight of today. The flight briefing page then opens with all the cards.</li>
+      <li>You can also tap <b>Briefing</b> on a single flight's <b>Details</b> page to add just that flight.</li>
     </ol>
   </div>
 </main>
@@ -92,45 +93,98 @@ function collect(BASE, go){
     }
     return issues;
   }
-  function tabUrl(id, pageName){
-    var a = document.getElementById(id), h = a && a.getAttribute("href");
-    if(h && h !== "#") return new URL(h, location.href).href;
-    return location.href.replace(/detailturnobb\.aspx/i, pageName);
-  }
   function getDoc(url){
     return fetch(url, {credentials: "include"}).then(function(r){
       if(!r.ok) throw new Error("HTTP " + r.status);
       return r.text();
     }).then(function(t){ return new DOMParser().parseFromString(t, "text/html"); });
   }
+  function tabHref(doc, baseUrl, id, pageName){
+    var a = doc.getElementById(id), h = a && a.getAttribute("href");
+    if(h && h !== "#") return new URL(h, baseUrl).href;
+    return baseUrl.replace(/detailturnobb\.aspx/i, pageName);
+  }
   function encode(obj){
     return btoa(unescape(encodeURIComponent(JSON.stringify(obj)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   }
   var banner = null;
-  try{
-    banner = document.createElement("div");
-    banner.textContent = "Collecting flight data...";
-    banner.style.cssText = "position:fixed;left:0;right:0;top:0;z-index:2147483647;background:#0e7a7a;color:#fff;font:600 20px -apple-system,Helvetica,Arial,sans-serif;padding:16px;text-align:center";
-    document.body.appendChild(banner);
-  }catch(e){}
-  var out = {v: 1, flight: null, crew: [], pax: {business: 0, economy: 0}, mel: [], errors: []}, done = false;
+  function say(t){
+    try{
+      if(!banner){
+        banner = document.createElement("div");
+        banner.style.cssText = "position:fixed;left:0;right:0;top:0;z-index:2147483647;background:#0e7a7a;color:#fff;font:600 20px -apple-system,Helvetica,Arial,sans-serif;padding:16px;text-align:center";
+        document.body.appendChild(banner);
+      }
+      banner.textContent = t;
+    }catch(e){}
+  }
+  var out = {v: 2, day: "", flights: [], errors: []}, done = false;
   function finish(){ if(done) return; done = true; go(BASE + encode(out)); }
-  if(!/detailturnobb/i.test(location.pathname)){
-    out.errors.push("Open a flight's Details page first, then tap Briefing again.");
-    finish(); return;
+  function loadFlight(url, doc0){
+    var card = {flight: null, crew: [], pax: {business: 0, economy: 0}, mel: [], errors: []};
+    var p0 = doc0 ? Promise.resolve(doc0) : getDoc(url);
+    return p0.then(function(doc){
+      card.flight = parseDetails(doc);
+      card.flight.date = new URL(url).searchParams.get("DataRif") || "";
+      function step(label, id, page, parse, assign){
+        return getDoc(tabHref(doc, url, id, page)).then(function(d){ assign(parse(d)); })
+          .catch(function(e){ card.errors.push(label + " page could not be read (" + e.message + ")."); });
+      }
+      return Promise.all([
+        step("Crew", "crewLink", "crewturnoBB.aspx", parseCrew, function(v){ card.crew = v; }),
+        step("Catering", "cateringLink", "cateringturnoBB.aspx", parseCatering, function(v){ card.pax = v; }),
+        step("Technical", "steccaLink", "SteccaturnoBB.aspx", parseMel, function(v){ card.mel = v; })
+      ]);
+    }, function(e){ card.errors.push("Flight page could not be read (" + e.message + ")."); }).then(function(){ return card; });
   }
-  out.flight = parseDetails(document);
-  out.flight.date = new URLSearchParams(location.search).get("DataRif") || "";
-  function step(label, id, page, parse, assign){
-    return getDoc(tabUrl(id, page)).then(function(doc){ assign(parse(doc)); })
-      .catch(function(e){ out.errors.push(label + " page could not be read (" + e.message + ")."); });
+  function pool(items, size, worker){
+    var i = 0, results = [];
+    function next(){
+      if(i >= items.length) return Promise.resolve();
+      var k = i++;
+      return worker(items[k], k).then(function(r){ results[k] = r; return next(); });
+    }
+    var runners = [];
+    for(var j = 0; j < Math.min(size, items.length); j++) runners.push(next());
+    return Promise.all(runners).then(function(){ return results; });
   }
-  setTimeout(function(){ out.errors.push("Some pages took too long to load."); finish(); }, 25000);
-  Promise.all([
-    step("Crew", "crewLink", "crewturnoBB.aspx", parseCrew, function(v){ out.crew = v; }),
-    step("Catering", "cateringLink", "cateringturnoBB.aspx", parseCatering, function(v){ out.pax = v; }),
-    step("Technical", "steccaLink", "SteccaturnoBB.aspx", parseMel, function(v){ out.mel = v; })
-  ]).then(finish);
+  say("Collecting flight data...");
+  setTimeout(function(){ out.errors.push("Some pages took too long to load."); finish(); }, 90000);
+  var path = location.pathname;
+  if(/detailturnobb/i.test(path)){
+    loadFlight(location.href, document).then(function(card){ out.flights.push(card); out.day = card.flight ? card.flight.date : ""; finish(); });
+    return;
+  }
+  if(/bbacmdutyplan/i.test(path)){
+    var links = Array.prototype.slice.call(document.querySelectorAll("a[href]")).filter(function(a){ return /detailturnobb\.aspx/i.test(a.getAttribute("href")); });
+    var seen = {}, flights = [], dates = [];
+    links.forEach(function(a){
+      var href = a.getAttribute("href");
+      if(seen[href]) return;
+      seen[href] = true;
+      var u = new URL(href, location.href), date = u.searchParams.get("DataRif") || "";
+      var tr = a.closest("tr"), t = clean(tr ? tr.textContent : a.textContent);
+      var positioning = /^\S+\s+P\s+[A-Z]{3}\s*-/.test(t);
+      if(dates.indexOf(date) < 0) dates.push(date);
+      flights.push({url: u.href, date: date, positioning: positioning});
+    });
+    var cur = document.querySelector("tr.currentDay"), m = cur && cur.textContent.match(/\d{2}\/\d{2}\/\d{4}/);
+    var start = m ? dates.indexOf(m[0]) : 0; if(start < 0) start = 0;
+    var day = "", todo = [];
+    for(var di = start; di < dates.length && !todo.length; di++){
+      day = dates[di];
+      todo = flights.filter(function(f){ return f.date === day && !f.positioning; });
+    }
+    out.day = day;
+    if(!todo.length){ out.errors.push("No flights to brief were found on the duty plan."); finish(); return; }
+    var count = 0;
+    pool(todo, 2, function(f){
+      return loadFlight(f.url, null).then(function(card){ count++; say("Collected flight " + count + " of " + todo.length + "..."); return card; });
+    }).then(function(cards){ out.flights = cards; finish(); });
+    return;
+  }
+  out.errors.push("Open the duty plan or a flight's Details page first, then tap Briefing again.");
+  finish();
 }
 function bookmarkletCode(){
   var base = new URL("briefing.html", location.href).href.split("#")[0] + "#d=";

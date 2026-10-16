@@ -311,16 +311,32 @@ function loadDeck(){
   if(!curCard()) D.sel = D.cards.length ? D.cards[0].id : null;
 }
 function sortDeck(){ D.cards.sort(function(a, b){ var x = dateKey(a.flight.date) + (a.flight.std || ""), y = dateKey(b.flight.date) + (b.flight.std || ""); return x < y ? -1 : x > y ? 1 : 0; }); }
-function addCard(o){
-  if(!o || !o.flight){ INTAKE = (o && o.errors && o.errors.length) ? o.errors : ["No flight data was received. Tap Briefing on the flight's Details page again."]; return; }
-  INTAKE = [];
+function putCard(o){
+  if(!o || !o.flight) return null;
   var f = o.flight, id = [f.date, f.number, f.from, f.to].join("|");
   var card = D.cards.filter(function(c){ return c.id === id; })[0], isNew = !card;
   if(isNew) card = {id:id, opts:{op:"SCHEDULED", bags:null, trol:"all", pantry:false}};
   card.flight = f; card.crew = o.crew || []; card.pax = o.pax || {business:0, economy:0}; card.mel = o.mel || []; card.errors = o.errors || [];
   var n = counts(card.crew); if(card.opts.bags === null || card.opts.bags > n.p + n.c) card.opts.bags = n.p + n.c;
   if(isNew) D.cards.push(card);
-  sortDeck(); D.sel = id; saveDeck();
+  return id;
+}
+function intake(o){
+  INTAKE = [];
+  if(o && o.flights){
+    var ids = [];
+    o.flights.forEach(function(f){ var id = putCard(f); if(id) ids.push(id); else if(f && f.errors) INTAKE = INTAKE.concat(f.errors); });
+    if(o.day) D.cards = D.cards.filter(function(c){ return c.flight.date !== o.day || ids.indexOf(c.id) >= 0; });
+    if(o.errors && o.errors.length) INTAKE = INTAKE.concat(o.errors);
+    if(!ids.length && !INTAKE.length) INTAKE = ["No flights were found for that day."];
+    sortDeck();
+    var first = D.cards.filter(function(c){ return ids.indexOf(c.id) >= 0; })[0];
+    if(first) D.sel = first.id;
+    saveDeck(); return;
+  }
+  var id1 = putCard(o);
+  if(!id1){ INTAKE = (o && o.errors && o.errors.length) ? o.errors : ["No flight data was received. Tap Briefing on the duty plan page again."]; return; }
+  sortDeck(); D.sel = id1; saveDeck();
 }
 
 /* ---------- screen ---------- */
@@ -331,14 +347,15 @@ function render(){
   var app = document.getElementById("app"), h = "";
   if(INTAKE.length) h += '<div class="panel"><p class="err">' + INTAKE.map(esc).join("<br>") + '</p></div>';
   if(!D.cards.length){
-    h += '<div class="panel"><h2>No flights yet</h2><p>Open a flight\'s Details page on the portal and tap Briefing in your Safari Favorites. The flight appears here as a card.</p></div>';
+    h += '<div class="panel"><h2>No flights yet</h2><p>Open the duty plan page on the portal and tap Briefing in your Safari Favorites. All the flights of today appear here as cards.</p></div>';
   } else {
     var c = curCard(), n = counts(c.crew), max = n.p + n.c, res = cardRes(c);
     var chips = D.cards.map(function(x){ return '<button type="button" data-card="' + esc(x.id) + '" aria-pressed="' + (x.id === D.sel) + '">' + esc(x.flight.number) + ', ' + esc(x.flight.from) + ' to ' + esc(x.flight.to) + '</button>'; }).join("");
     h += '<div class="panel"><h2>Flights</h2><div class="seg">' + chips + '</div>' +
       '<div class="row2"><button class="btn primary" type="button" id="make">Create PDF</button>' +
       '<span id="pdfmsg"></span></div></div>';
-    h += '<div class="panel"><h2>' + esc(c.flight.number) + ', ' + esc(c.flight.from) + ' to ' + esc(c.flight.to) + '</h2><div class="two"><div>' +
+    h += '<div class="panel"><h2>' + esc(c.flight.number) + ', ' + esc(c.flight.from) + ' to ' + esc(c.flight.to) + '</h2>' +
+      ((c.errors && c.errors.length) ? '<p class="err">' + c.errors.map(esc).join("<br>") + '</p>' : '') + '<div class="two"><div>' +
       '<div class="field"><div>Operation</div>' + seg("op", OPS, c.opts.op) + '</div>' +
       '<div class="field"><div>Trolleys</div>' + seg("trol", TROL, c.opts.trol) + '</div></div><div>' +
       '<div class="field"><div>Crew bags on board</div><div class="step"><button class="btn" type="button" data-bags="-1" aria-label="One fewer bag">\u2212</button><output>' + c.opts.bags + '</output><button class="btn" type="button" data-bags="1" aria-label="One more bag">+</button></div><p class="hint">Standard is ' + max + ', one per crew member</p></div>' +
@@ -404,7 +421,7 @@ function loadLogo(){
   loadDeck();
   var h = new URLSearchParams(location.hash.slice(1)), raw = h.get("d");
   if(raw){
-    try{ addCard(decodeFlight(raw)); }catch(e){ INTAKE = ["The flight data could not be read. Tap Briefing on the flight's Details page again."]; }
+    try{ intake(decodeFlight(raw)); }catch(e){ INTAKE = ["The flight data could not be read. Tap Briefing on the duty plan page again."]; }
     try{ history.replaceState(null, "", location.pathname + location.search); }catch(e){}
   }
   loadLogo(); render();
