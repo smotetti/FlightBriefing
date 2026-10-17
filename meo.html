@@ -45,7 +45,7 @@ pre.text{white-space:pre-wrap;font:16px/1.5 var(--body);margin:0}
 <script>
 "use strict";
 var DATA = null, LOADERR = "", FILTER = "", RKEY = "meo.recent.v1", FKEY = "meo.files.v1";
-var FRX = /^meo-([A-Za-z]{4})-(\d{2}[LRClrc]?)(?:-(\d+))?\.(svg|png|jpe?g|webp|pdf)$/;
+var FRX = /^meo-([A-Za-z]{4})-(\d{2}[LRClrc]?)(?:-(\d+))?\.(svg|png|jpe?g|webp|pdf)$/i, VERSION = 3, STATUS = "", FOUND = 0;
 function esc(s){ return String(s == null ? "" : s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
 function airports(){ return (DATA && DATA.airports || []).slice().sort(function(a, b){ return (a.name || a.icao).localeCompare(b.name || b.icao); }); }
 function rwyKey(id){ var m = /^(\d+)(.*)$/.exec(id) || [0, 0, id]; return ("00" + m[1]).slice(-3) + m[2]; }
@@ -76,13 +76,30 @@ function discoverUrl(){
   return "https://api.github.com/repos/" + h.split(".")[0] + "/" + repo + "/contents/";
 }
 function cachedFiles(){ try{ return JSON.parse(localStorage.getItem(FKEY)) || []; }catch(e){ return []; } }
+function saveFiles(names){ try{ localStorage.setItem(FKEY, JSON.stringify(names)); }catch(e){} }
 function discover(){
-  var u = discoverUrl(); if(!u) return Promise.resolve(cachedFiles());
-  return fetch(u, {cache: "no-cache"}).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(list){
+  var u = discoverUrl();
+  if(!u) return Promise.resolve({names: cachedFiles(), status: "local"});
+  return fetch(u, {cache: "no-cache"}).then(function(r){ if(!r.ok) throw r.status; return r.json(); }).then(function(list){
     var names = list.filter(function(x){ return x.type === "file" && FRX.test(x.name); }).map(function(x){ return x.name; });
-    try{ localStorage.setItem(FKEY, JSON.stringify(names)); }catch(e){}
-    return names;
-  }).catch(function(){ return cachedFiles(); });
+    saveFiles(names); return {names: names, status: "ok"};
+  }).catch(function(e){ return {names: cachedFiles(), status: (e === 403 || e === 429) ? "limit" : "error"}; });
+}
+function probe(json, have){
+  var exts = ["png", "jpg", "jpeg", "pdf", "svg", "webp", "PNG", "JPG", "JPEG", "PDF", "SVG", "WEBP"], tests = [], known = {};
+  have.forEach(function(n){ known[n] = true; });
+  (json.airports || []).forEach(function(a){ (a.runways || []).forEach(function(r){
+    var base = "meo-" + a.icao + "-" + r.id;
+    var has = have.some(function(n){ var m = FRX.exec(n); return m && m[1].toUpperCase() === a.icao && m[2].toUpperCase() === String(r.id).toUpperCase(); });
+    if(has) return;
+    exts.forEach(function(x){ [base, base + "-2"].forEach(function(b){ tests.push(b + "." + x); }); });
+  }); });
+  return Promise.all(tests.map(function(n){
+    return fetch(n, {method: "HEAD", cache: "no-cache"}).then(function(r){ return r.ok ? n : null; }).catch(function(){ return null; });
+  })).then(function(found){
+    var all = have.slice(); found.forEach(function(n){ if(n && !known[n]){ all.push(n); known[n] = true; } });
+    saveFiles(all); return all;
+  });
 }
 function findAp(icao){ return airports().filter(function(a){ return a.icao === icao; })[0] || null; }
 function route(){
@@ -144,7 +161,7 @@ function render(){
     var r = a.runways.filter(function(x){ return x.id === rt.rwy; })[0];
     if(r){ if(r.charts.length) remember(a.icao, r.id); h = viewChart(a, r); } else h = viewRunways(a);
   } else if(a) h = viewRunways(a); else h = viewAirports();
-  h += '<div class="panel"><p class="hint" style="margin:0 0 10px" id="offmsg">' + (DATA.updated ? 'Database updated ' + esc(DATA.updated) + '. ' : '') + '</p><button class="btn" type="button" id="offline">Save all charts for offline use</button></div>';
+  h += '<div class="panel"><p class="hint" style="margin:0 0 10px" id="offmsg">' + 'mEO version ' + VERSION + '. ' + (DATA.updated ? 'Database updated ' + esc(DATA.updated) + '. ' : '') + 'Chart files found: ' + FOUND + '. ' + (STATUS === "limit" ? 'GitHub is limiting the file check on this network, so the charts were looked for one by one. ' : STATUS === "error" ? 'The file check could not reach GitHub, so the charts were looked for one by one. ' : '') + '</p><button class="btn" type="button" id="offline">Save all charts for offline use</button></div>';
   app.innerHTML = h;
   window.scrollTo(0, 0);
 }
@@ -172,8 +189,14 @@ window.addEventListener("hashchange", render);
 function load(){
   LOADERR = ""; render();
   var jp = fetch("meo-data.json", {cache: "no-cache"}).then(function(r){ if(!r.ok) throw new Error("HTTP " + r.status); return r.json(); });
-  Promise.all([jp, discover()])
-    .then(function(x){ var j = x[0]; if(!j || !j.airports) throw new Error("no airports"); DATA = build(j, x[1]); render(); })
+  jp.then(function(j){
+      if(!j || !j.airports) throw new Error("no airports");
+      return discover().then(function(d){
+        STATUS = d.status;
+        return (d.status === "ok" || d.status === "local" ? Promise.resolve(d.names) : probe(j, d.names)).then(function(names){ return {j: j, names: names}; });
+      });
+    })
+    .then(function(x){ DATA = build(x.j, x.names); FOUND = x.names.filter(function(n){ return FRX.test(n); }).length; render(); })
     .catch(function(){ LOADERR = "The procedure database could not be loaded. If you are offline, open mEO once while online so it can be saved on this iPad."; render(); });
 }
 (function init(){
