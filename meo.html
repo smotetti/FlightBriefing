@@ -31,6 +31,7 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
 .item.rwy[data-empty="1"]{opacity:.7}
 .tag{display:inline-block;margin-top:2px;font-size:13px;color:var(--warn);font-weight:650}
 .chart{display:block;width:100%;height:auto;background:#fff;border-radius:10px}
+.chart.pdf{height:80vh;border:0}
 .hint{color:var(--muted);font-size:15px;margin:6px 0 0}
 .err{color:var(--warn);font-weight:600}
 .row2{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;align-items:center}
@@ -43,9 +44,46 @@ pre.text{white-space:pre-wrap;font:16px/1.5 var(--body);margin:0}
 <main id="app"></main>
 <script>
 "use strict";
-var DATA = null, LOADERR = "", FILTER = "", RKEY = "meo.recent.v1";
+var DATA = null, LOADERR = "", FILTER = "", RKEY = "meo.recent.v1", FKEY = "meo.files.v1";
+var FRX = /^meo-([A-Za-z]{4})-(\d{2}[LRClrc]?)(?:-(\d+))?\.(svg|png|jpe?g|webp|pdf)$/;
 function esc(s){ return String(s == null ? "" : s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
-function airports(){ return (DATA && DATA.airports || []).slice().sort(function(a, b){ return a.name.localeCompare(b.name); }); }
+function airports(){ return (DATA && DATA.airports || []).slice().sort(function(a, b){ return (a.name || a.icao).localeCompare(b.name || b.icao); }); }
+function rwyKey(id){ var m = /^(\d+)(.*)$/.exec(id) || [0, 0, id]; return ("00" + m[1]).slice(-3) + m[2]; }
+function build(json, names){
+  var db = {updated: json.updated || "", airports: JSON.parse(JSON.stringify(json.airports || []))};
+  db.airports.forEach(function(a){ a.runways.forEach(function(r){ r.charts = r.charts || (r.chart ? [r.chart] : []); }); });
+  (names || []).forEach(function(n){
+    var m = FRX.exec(n); if(!m) return;
+    var icao = m[1].toUpperCase(), id = m[2].toUpperCase(), page = +(m[3] || 1);
+    var a = db.airports.filter(function(x){ return x.icao === icao; })[0];
+    if(!a){ a = {icao: icao, iata: "", name: "", runways: []}; db.airports.push(a); }
+    var r = a.runways.filter(function(x){ return x.id === id; })[0];
+    if(!r){ r = {id: id, charts: []}; a.runways.push(r); }
+    r._p = r._p || []; r._p.push({n: n, p: page});
+  });
+  db.airports.forEach(function(a){
+    a.runways.forEach(function(r){
+      if(r._p){ r.charts = r._p.sort(function(x, y){ return x.p - y.p; }).map(function(x){ return x.n; }); delete r._p; }
+      r.charts = r.charts || [];
+    });
+    a.runways.sort(function(x, y){ return rwyKey(x.id) < rwyKey(y.id) ? -1 : 1; });
+  });
+  return db;
+}
+function discoverUrl(){
+  var h = location.hostname; if(!/\.github\.io$/i.test(h)) return null;
+  var repo = location.pathname.split("/")[1]; if(!repo || /\.html?$/i.test(repo)) return null;
+  return "https://api.github.com/repos/" + h.split(".")[0] + "/" + repo + "/contents/";
+}
+function cachedFiles(){ try{ return JSON.parse(localStorage.getItem(FKEY)) || []; }catch(e){ return []; } }
+function discover(){
+  var u = discoverUrl(); if(!u) return Promise.resolve(cachedFiles());
+  return fetch(u, {cache: "no-cache"}).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(list){
+    var names = list.filter(function(x){ return x.type === "file" && FRX.test(x.name); }).map(function(x){ return x.name; });
+    try{ localStorage.setItem(FKEY, JSON.stringify(names)); }catch(e){}
+    return names;
+  }).catch(function(){ return cachedFiles(); });
+}
 function findAp(icao){ return airports().filter(function(a){ return a.icao === icao; })[0] || null; }
 function route(){
   var h = decodeURIComponent(location.hash.replace(/^#/, "")).split("/");
@@ -57,7 +95,8 @@ function remember(icao, rwy){
   var k = icao + "/" + rwy, l = recents().filter(function(x){ return x !== k; }); l.unshift(k);
   try{ localStorage.setItem(RKEY, JSON.stringify(l.slice(0, 6))); }catch(e){}
 }
-function apLabel(a){ return esc(a.name) + (a.iata ? ", " + esc(a.iata) : ""); }
+function apLabel(a){ return a.name ? esc(a.name) + (a.iata ? ", " + esc(a.iata) : "") : esc(a.icao); }
+function apTitle(a){ return a.name ? esc(a.icao) + ', ' + apLabel(a) : esc(a.icao); }
 
 function viewAirports(){
   var q = FILTER.trim().toLowerCase(), list = airports().filter(function(a){
@@ -74,17 +113,20 @@ function viewAirports(){
   return h + '</div>';
 }
 function viewRunways(a){
-  return '<div class="panel"><div class="crumbs"><button class="btn" type="button" data-go="">All airports</button></div><h2>' + esc(a.icao) + ', ' + apLabel(a) + '</h2><p class="hint" style="margin:0 0 12px">Choose the runway</p><div class="grid">' +
-    a.runways.map(function(r){ return '<button class="item rwy" type="button" data-go="' + esc(a.icao + "/" + r.id) + '"' + (r.chart ? '' : ' data-empty="1"') + '><b>RWY ' + esc(r.id) + '</b>' + (r.chart ? '' : '<span class="tag">No chart yet</span>') + '</button>'; }).join("") +
+  return '<div class="panel"><div class="crumbs"><button class="btn" type="button" data-go="">All airports</button></div><h2>' + apTitle(a) + '</h2><p class="hint" style="margin:0 0 12px">Choose the runway</p><div class="grid">' +
+    a.runways.map(function(r){ return '<button class="item rwy" type="button" data-go="' + esc(a.icao + "/" + r.id) + '"' + (r.charts.length ? '' : ' data-empty="1"') + '><b>RWY ' + esc(r.id) + '</b>' + (r.charts.length ? '' : '<span class="tag">No chart yet</span>') + '</button>'; }).join("") +
     '</div></div>';
 }
 function viewChart(a, r){
   var h = '<div class="panel"><div class="crumbs"><button class="btn" type="button" data-go="">All airports</button><button class="btn" type="button" data-go="' + esc(a.icao) + '">' + esc(a.icao) + ' runways</button></div>' +
-    '<h2>' + esc(a.icao) + ', ' + apLabel(a) + ', RWY ' + esc(r.id) + '</h2>';
-  if(r.chart){
-    h += '<img class="chart" id="chart" src="' + esc(r.chart) + '" alt="Single engine procedure, ' + esc(a.name) + ' runway ' + esc(r.id) + '">' +
-      '<div class="row2"><a class="btn" href="' + esc(r.chart) + '" target="_blank" rel="noopener">Open full size</a>' +
-      (r.revision ? '<span class="hint" style="margin:0">Revision ' + esc(r.revision) + '</span>' : '') + '</div>';
+    '<h2>' + apTitle(a) + ', RWY ' + esc(r.id) + '</h2>';
+  if(r.charts.length){
+    r.charts.forEach(function(c, i){
+      var alt = 'Single engine procedure, ' + esc(a.name || a.icao) + ' runway ' + esc(r.id);
+      h += /\.pdf$/i.test(c) ? '<iframe class="chart pdf" src="' + esc(c) + '" title="' + alt + '"></iframe>' : '<img class="chart"' + (i === 0 ? ' id="chart"' : '') + ' src="' + esc(c) + '" alt="' + alt + '"' + (i ? ' style="margin-top:12px"' : '') + '>';
+      h += '<div class="row2"><a class="btn" href="' + esc(c) + '" target="_blank" rel="noopener">Open full size' + (r.charts.length > 1 ? ' (' + (i + 1) + ' of ' + r.charts.length + ')' : '') + '</a>' +
+        (i === 0 && r.revision ? '<span class="hint" style="margin:0">Revision ' + esc(r.revision) + '</span>' : '') + '</div>';
+    });
   } else {
     h += '<p class="err">There is no chart for this runway yet.</p>';
   }
@@ -100,7 +142,7 @@ function render(){
   var rt = route(), a = rt.icao ? findAp(rt.icao) : null, h;
   if(a && rt.rwy){
     var r = a.runways.filter(function(x){ return x.id === rt.rwy; })[0];
-    if(r){ if(r.chart) remember(a.icao, r.id); h = viewChart(a, r); } else h = viewRunways(a);
+    if(r){ if(r.charts.length) remember(a.icao, r.id); h = viewChart(a, r); } else h = viewRunways(a);
   } else if(a) h = viewRunways(a); else h = viewAirports();
   h += '<div class="panel"><p class="hint" style="margin:0 0 10px" id="offmsg">' + (DATA.updated ? 'Database updated ' + esc(DATA.updated) + '. ' : '') + '</p><button class="btn" type="button" id="offline">Save all charts for offline use</button></div>';
   app.innerHTML = h;
@@ -108,7 +150,7 @@ function render(){
 }
 function saveOffline(){
   var msg = document.getElementById("offmsg"), files = [];
-  airports().forEach(function(a){ a.runways.forEach(function(r){ if(r.chart) files.push(r.chart); }); });
+  airports().forEach(function(a){ a.runways.forEach(function(r){ r.charts.forEach(function(c){ files.push(c); }); }); });
   if(!files.length){ msg.textContent = "There are no charts to save yet."; return; }
   var done = 0, bad = 0;
   msg.textContent = "Saving 0 of " + files.length + "...";
@@ -129,8 +171,9 @@ document.addEventListener("input", function(e){
 window.addEventListener("hashchange", render);
 function load(){
   LOADERR = ""; render();
-  fetch("meo-data.json", {cache: "no-cache"}).then(function(r){ if(!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-    .then(function(j){ if(!j || !j.airports) throw new Error("no airports"); DATA = j; render(); })
+  var jp = fetch("meo-data.json", {cache: "no-cache"}).then(function(r){ if(!r.ok) throw new Error("HTTP " + r.status); return r.json(); });
+  Promise.all([jp, discover()])
+    .then(function(x){ var j = x[0]; if(!j || !j.airports) throw new Error("no airports"); DATA = build(j, x[1]); render(); })
     .catch(function(){ LOADERR = "The procedure database could not be loaded. If you are offline, open mEO once while online so it can be saved on this iPad."; render(); });
 }
 (function init(){
@@ -144,7 +187,7 @@ function load(){
   try{ if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(function(){}); }catch(e){}
   load();
 })();
-window.__t = {setData: function(d){ DATA = d; LOADERR = ""; render(); }, render: render};
+window.__t = {build: build, render: render};
 </script>
 <script src="menu.js"></script>
 </body>

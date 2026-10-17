@@ -1,14 +1,7 @@
 {
   "updated": "2026-10-16",
   "airports": [
-    {
-      "icao": "LIRQ",
-      "iata": "FLR",
-      "name": "Florence",
-      "runways": [
-        { "id": "05", "chart": null, "text": "" },
-        { "id": "23", "chart": null, "text": "" }
-      ]
-    }
+    { "icao": "LIPE", "iata": "BLQ", "name": "Bologna", "runways": [ { "id": "12" }, { "id": "30" } ] },
+    { "icao": "LIRQ", "iata": "FLR", "name": "Florence", "runways": [ { "id": "05" }, { "id": "23" } ] }
   ]
 }
