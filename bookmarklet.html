@@ -163,8 +163,7 @@ function collect(BASE, go){
       if(seen[href]) return;
       seen[href] = true;
       var u = new URL(href, location.href), date = u.searchParams.get("DataRif") || "";
-      var tr = a.closest("tr"), t = clean(tr ? tr.textContent : a.textContent);
-      var positioning = /^\S+\s+P\s+[A-Z]{3}\s*-/.test(t);
+      var positioning = /(^|\s)mg(\s|$)/i.test(clean(a.textContent));
       if(dates.indexOf(date) < 0) dates.push(date);
       flights.push({url: u.href, date: date, positioning: positioning});
     });
