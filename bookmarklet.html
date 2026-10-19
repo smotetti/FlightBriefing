@@ -17,6 +17,7 @@ main,.top{max-width:900px;margin:0 auto}
 .top img{display:block;height:64px;width:auto;max-width:60%}.top h1{margin:0;font-size:22px;font-weight:650}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
 h2{margin:0 0 10px;font-size:19px}ol{margin:0;padding-left:22px}li{margin-bottom:10px}
+input[type=url]{width:100%;min-height:52px;font:16px/1.3 ui-monospace,Menlo,monospace;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:0 12px;margin-top:6px}
 textarea{width:100%;height:110px;font:13px/1.3 ui-monospace,Menlo,monospace;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px}
 .btn{min-height:56px;padding:0 20px;font:inherit;font-size:19px;font-weight:650;color:var(--on-teal);background:var(--teal);border:0;border-radius:12px;cursor:pointer;margin:10px 0}
 .msg{color:var(--muted);margin:4px 0 0}
@@ -28,12 +29,16 @@ textarea{width:100%;height:110px;font:13px/1.3 ui-monospace,Menlo,monospace;colo
   <div class="panel">
     <h2>Set up once</h2>
     <ol>
-      <li>Tap <b>Copy code</b> below.</li>
+      <li>Check that the address below is the page that opens your flight briefing (tap <b>Open it to test</b>). Then tap <b>Copy code</b>.</li>
       <li>In Safari tap <b>Share</b>, then <b>Add Bookmark</b>. Name it <b>Briefing</b>, choose <b>Favorites</b> and save. This only saves this page for now.</li>
       <li>Open your bookmarks (the book icon), choose <b>Favorites</b>, tap <b>Edit</b> and tap <b>Briefing</b>. Delete the address and paste the code you copied. Tap <b>Done</b>.</li>
     </ol>
     <button class="btn" id="copy" type="button">Copy code</button>
     <p class="msg" id="msg"></p>
+    <label for="target"><b>Address of your briefing page</b></label>
+    <input id="target" type="url" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Address of your briefing page">
+    <p class="msg" id="tmsg"></p>
+    <p style="margin:6px 0 10px"><a href="#" id="testlink" target="_blank" rel="noopener">Open it to test</a></p>
     <textarea id="code" readonly aria-label="Bookmark code"></textarea>
   </div>
   <div class="panel">
@@ -119,7 +124,21 @@ function collect(BASE, go){
     }catch(e){}
   }
   var out = {v: 2, day: "", flights: [], errors: []}, done = false;
-  function finish(){ if(done) return; done = true; go(BASE + encode(out)); }
+  function finish(){
+    if(done) return; done = true;
+    var u = BASE + encode(out);
+    say("Opening the briefing...");
+    go(u);
+    setTimeout(function(){
+      try{
+        banner.textContent = "";
+        var a = document.createElement("a");
+        a.href = u; a.textContent = "Tap here to open the briefing";
+        a.style.cssText = "color:#fff;text-decoration:underline";
+        banner.appendChild(a);
+      }catch(e){}
+    }, 4000);
+  }
   function loadFlight(url, doc0){
     var card = {flight: null, crew: [], pax: {business: 0, economy: 0}, mel: [], errors: []};
     var p0 = doc0 ? Promise.resolve(doc0) : getDoc(url);
@@ -186,12 +205,27 @@ function collect(BASE, go){
   finish();
 }
 function bookmarkletCode(){
-  var base = new URL("briefing.html", location.href).href.split("#")[0] + "#d=";
+  var field = document.getElementById("target");
+  var base = ((field && field.value.trim()) || new URL("briefing.html", location.href).href).split("#")[0] + "#d=";
   return "javascript:" + encodeURIComponent("void((" + collect.toString() + ")(" + JSON.stringify(base) + "))");
 }
 (function(){
   var code = document.getElementById("code"), msg = document.getElementById("msg");
-  code.value = bookmarkletCode();
+  var target = document.getElementById("target"), tmsg = document.getElementById("tmsg"), tlink = document.getElementById("testlink");
+  function refresh(){ code.value = bookmarkletCode(); tlink.href = target.value.trim() || "#"; }
+  var dir = location.href.split("#")[0].split("?")[0].replace(/[^\/]*$/, "");
+  var names = ["briefing.html", "FlightBriefing.html", "flightbriefing.html", "Briefing.html", "flight-briefing.html"];
+  target.value = dir + names[0];
+  refresh();
+  target.addEventListener("input", function(){ tmsg.textContent = ""; refresh(); });
+  (function findPage(list){
+    if(typeof fetch !== "function") return;
+    var n = list.shift();
+    if(!n){ tmsg.textContent = "I could not find your briefing page next to this file. Type its exact address above, then use Open it to test."; return; }
+    fetch(dir + n, {method: "HEAD", cache: "no-cache"}).then(function(r){
+      if(r.ok){ target.value = dir + n; tmsg.textContent = "Found your briefing page: " + n; refresh(); } else findPage(list);
+    }).catch(function(){ findPage(list); });
+  })(names.slice());
   document.getElementById("copy").addEventListener("click", function(){
     function ok(){ msg.textContent = "Copied. Now follow step 2 and step 3."; }
     function fallback(){ code.focus(); code.select(); code.setSelectionRange(0, code.value.length); try{ document.execCommand("copy"); ok(); }catch(e){ msg.textContent = "Tap the box, choose Select All, then Copy."; } }
