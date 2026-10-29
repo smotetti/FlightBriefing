@@ -44,7 +44,7 @@ textarea{width:100%;height:110px;font:13px/1.3 ui-monospace,Menlo,monospace;colo
   <div class="panel">
     <h2>Use it on every flight</h2>
     <ol>
-      <li>Log into the portal and open the <b>duty plan</b> page (the list of your days and flights).</li>
+      <li>Log into the portal and open the <b>duty plan</b> page (the list of your days and flights). For the logbook, open the <b>monthly roster</b> page instead.</li>
       <li>Tap the address bar and tap <b>Briefing</b> in your Favorites.</li>
       <li>Wait while it collects every flight of today. The flight briefing page then opens with all the cards.</li>
       <li>You can also tap <b>Briefing</b> on a single flight's <b>Details</b> page to add just that flight.</li>
@@ -52,7 +52,7 @@ textarea{width:100%;height:110px;font:13px/1.3 ui-monospace,Menlo,monospace;colo
   </div>
 </main>
 <script>
-function collect(BASE, go){
+function collect(BASE, go, LB){
   go = go || function(u){ location.href = u; };
   function clean(s){ return (s || "").replace(/\s+/g, " ").trim(); }
   function txt(doc, sel){ var e = doc.querySelector(sel); return e ? clean(e.textContent) : ""; }
@@ -123,10 +123,10 @@ function collect(BASE, go){
       banner.textContent = t;
     }catch(e){}
   }
-  var out = {v: 2, day: "", flights: [], errors: []}, done = false;
+  var out = {v: 2, day: "", flights: [], errors: []}, done = false, TARGET = BASE;
   function finish(){
     if(done) return; done = true;
-    var u = BASE + encode(out);
+    var u = TARGET + encode(out);
     say("Opening the briefing...");
     go(u);
     setTimeout(function(){
@@ -201,13 +201,63 @@ function collect(BASE, go){
     }).then(function(cards){ out.flights = cards; finish(); });
     return;
   }
-  out.errors.push("Open the duty plan or a flight's Details page first, then tap Briefing again.");
+  if(/\/acmdutyplan\.aspx$/i.test(path) && document.getElementById("TurnoTable")){
+    TARGET = LB || BASE.replace(/[^\/]*#d=$/, "roster.html#d=");
+    out = {v: 3, kind: "roster", login: "", items: [], errors: []};
+    var lg = document.getElementById("lblLoginValue");
+    if(lg) out.login = clean(lg.textContent).replace(/^Login\s*:\s*/i, "");
+    var col = null, curDate = "", toLoad = [];
+    function tx(c){ return c ? clean(c.textContent) : ""; }
+    Array.prototype.slice.call(document.getElementById("TurnoTable").querySelectorAll("tr")).forEach(function(tr){
+      var cs = Array.prototype.slice.call(tr.children);
+      if(!col){
+        var names = cs.map(tx);
+        if(names.indexOf("Flight Number") >= 0){
+          col = {day: names.indexOf("Day"), num: names.indexOf("Flight Number"), meal: names.indexOf("Crew Meal"), mg: names.indexOf("Must Go"),
+            from: names.indexOf("From"), to: names.indexOf("To"), ds: names.indexOf("Duty Start"), de: names.indexOf("Duty End"), off: names.indexOf("Block Off"), on: names.indexOf("Block On")};
+        }
+        return;
+      }
+      if(cs.length < 12) return;
+      var dm = tx(cs[col.day]).match(/(\d{2})\/(\d{2})\/(\d{2})/);
+      if(dm) curDate = dm[1] + "/" + dm[2] + "/20" + dm[3];
+      var numTxt = tx(cs[col.num]);
+      if(!numTxt || !curDate) return;
+      var a = cs[col.num].querySelector("a"), oc = a ? (a.getAttribute("onclick") || "") : "";
+      var m = oc.match(/Vettore=([^&"']*)&(?:amp;)?Numero=([^&"']*)&(?:amp;)?APTPart=([^"'&]*)/), dd = oc.match(/DataRif=(\d{2}\/\d{2}\/\d{4})/);
+      if(m){
+        var carrier = clean(m[1]), isMg = /^mg$/i.test(tx(cs[col.mg])), isTr = carrier.toUpperCase() === "TR";
+        var it = {kind: "flight", date: dd ? dd[1] : curDate, carrier: carrier, numero: clean(m[2]), apt: clean(m[3]), number: numTxt,
+          from: tx(cs[col.from]), to: tx(cs[col.to]), off: tx(cs[col.off]), on: tx(cs[col.on]), ds: tx(cs[col.ds]), de: tx(cs[col.de]),
+          meal: /\(P\)/i.test(tx(cs[col.meal])), mg: isMg, tr: isTr, reg: "", type: "", crew: []};
+        out.items.push(it); if(!isMg && !isTr) toLoad.push(it);
+      } else if(numTxt === "O" || numTxt === "!!!"){
+        out.items.push({kind: "off", date: curDate, code: numTxt});
+      } else if(/^[A-Za-z]/.test(numTxt)){
+        out.items.push({kind: "other", date: curDate, code: numTxt, start: tx(cs[col.off]) || tx(cs[col.ds]), end: tx(cs[col.on]), ds: tx(cs[col.ds]), de: tx(cs[col.de])});
+      }
+    });
+    if(!col){ out.errors.push("I could not find the roster table on this page."); finish(); return; }
+    var count = 0, detailBase = new URL("DetailTurnoBB.aspx", location.href).href;
+    pool(toLoad, 3, function(it){
+      var q = detailBase + "?DataRif=" + encodeURIComponent(it.date) + "&Vettore=" + encodeURIComponent(it.carrier) + "&Numero=" + encodeURIComponent(it.numero) + "&APTPart=" + encodeURIComponent(it.apt);
+      return getDoc(q).then(function(doc){
+        it.reg = txt(doc, "#lblAC"); it.type = txt(doc, "#lblOPSACType");
+        if(!out.login) out.login = txt(doc, "#lblLogin");
+        return getDoc(tabHref(doc, q, "crewLink", "crewturnoBB.aspx")).then(function(d2){ it.crew = parseCrew(d2); });
+      }).catch(function(e){ out.errors.push(it.date + " " + it.number + ": " + e.message); })
+        .then(function(){ count++; say("Collected flight " + count + " of " + toLoad.length + "..."); });
+    }).then(function(){ finish(); });
+    return;
+  }
+  out.errors.push("Open the duty plan, a flight's Details page or the monthly roster first, then tap the bookmark again.");
   finish();
 }
 function bookmarkletCode(){
   var field = document.getElementById("target");
   var base = ((field && field.value.trim()) || new URL("briefing.html", location.href).href).split("#")[0] + "#d=";
-  return "javascript:" + encodeURIComponent("void((" + collect.toString() + ")(" + JSON.stringify(base) + "))");
+  var lb = base.replace(/[^\/]*#d=$/, "roster.html#d=");
+  return "javascript:" + encodeURIComponent("void((" + collect.toString() + ")(" + JSON.stringify(base) + ",void 0," + JSON.stringify(lb) + "))");
 }
 (function(){
   var code = document.getElementById("code"), msg = document.getElementById("msg");

@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Roster</title>
+<style>
+:root{--bar:#b4c3c9;--paper:#e8edef;--panel:rgba(255,255,255,.95);--ink:#12232b;--muted:#566a72;--line:#c6d2d6;--teal:#0e7a7a;--on-teal:#fff;--warn:#a64a00;
+  --body:"Avenir Next",-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif}
+@media (prefers-color-scheme:dark){:root{--paper:#0d1619;--panel:rgba(22,37,43,.94);--ink:#e5eef0;--muted:#8ea4ac;--line:#2a3e46;--teal:#38b6b6;--on-teal:#04181a;--warn:#eb9a55}}
+*{box-sizing:border-box}[hidden]{display:none !important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.45 var(--body);
+  padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+.photo::before{content:"";position:fixed;inset:0;z-index:-1;background:linear-gradient(rgba(8,18,22,.28),rgba(8,18,22,.5)),var(--photo) center/cover no-repeat}
+main,.top{max-width:1130px;margin:0 auto}
+.top{margin-bottom:16px;display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px;background:var(--bar);color:#12232b;border-radius:14px;padding:14px 22px}
+.top img{display:block;height:64px;width:auto;max-width:60%}.top h1{margin:0;font-size:22px;font-weight:650}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+h2{margin:0 0 10px;font-size:19px}
+.hint{color:var(--muted);font-size:15px;margin:6px 0 0}.err{color:var(--warn);font-weight:600}
+.btn,.chip{font:inherit;color:var(--ink);background:var(--paper);border:1.5px solid var(--line);border-radius:12px;cursor:pointer}
+.btn{min-height:52px;padding:0 18px;font-size:18px}
+.btn.primary{background:var(--teal);border-color:var(--teal);color:var(--on-teal);font-weight:650}
+.btn.small{min-height:44px;font-size:16px}
+.row2{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;align-items:center}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{min-height:48px;padding:0 14px;font-size:17px}
+.chip[aria-pressed=true]{background:var(--teal);border-color:var(--teal);color:var(--on-teal);font-weight:650}
+.tabs{display:flex;gap:8px;margin-bottom:16px}.tabs .chip{flex:1}
+.pick{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.pick label{display:flex;align-items:center;gap:10px;font-size:18px}
+.pick input{width:84px;min-height:48px;font:inherit;font-size:19px;color:var(--ink);background:var(--paper);border:1.5px solid var(--line);border-radius:10px;padding:0 10px;text-align:center}
+.list{display:grid;gap:8px}
+.item{display:grid;grid-template-columns:44px 1fr;gap:10px;align-items:start;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--paper);cursor:pointer;text-align:left;font:inherit;color:var(--ink);width:100%}
+.item[aria-pressed=false]{opacity:.5}
+.box{width:30px;height:30px;border:2px solid var(--teal);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--on-teal);font-weight:700;margin-top:2px}
+.item[aria-pressed=true] .box{background:var(--teal)}
+.item b{font-size:19px}.sub{color:var(--muted);font-size:15px}
+.num{font-variant-numeric:tabular-nums}
+.tag{display:inline-block;font-size:13px;font-weight:650;border-radius:6px;padding:1px 8px;background:var(--teal);color:var(--on-teal);margin-left:8px}
+.day{border:1.5px solid var(--line);border-radius:12px;background:var(--paper);padding:10px 14px}
+.day summary{cursor:pointer;list-style:none}.day summary::-webkit-details-marker{display:none}
+.day pre{white-space:pre-wrap;font:15px/1.5 var(--body);margin:10px 0 0;color:var(--ink)}
+.off{opacity:.65}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+</style>
+</head>
+<body>
+<header class="top"><img id="logo" src="logo.png" alt="Air Dolomiti" onerror="this.hidden=true"><h1>Roster</h1></header>
+<main id="app"></main>
+<script>
+"use strict";
+var K = {data: "roster.data.v1", sim: "roster.sim.v1", pick: "roster.pick.v1", opts: "roster.opts.v1", tab: "roster.tab.v1"};
+var R = null, SIM = [], PICK = {}, OPTS = {off: false}, TAB = "cal", INTAKE = [], TZF = null;
+
+/* ---------- helpers ---------- */
+function esc(s){ return String(s == null ? "" : s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+function pad(n){ return ("0" + n).slice(-2); }
+function tc(s){ return String(s || "").toLowerCase().replace(/(^|[\s'\-])(\S)/g, function(m, a, b){ return a + b.toUpperCase(); }).replace(/\s+/g, " ").trim(); }
+function mins(t){ var m = /^(\d{1,2}):(\d{2})$/.exec(t || ""); return m ? (+m[1]) * 60 + (+m[2]) : null; }
+function blockMin(off, on){ var a = mins(off), b = mins(on); if(a === null || b === null) return null; var d = b - a; return d < 0 ? d + 1440 : d; }
+function hm(m){ return m === null ? "" : Math.floor(m / 60) + ":" + pad(m % 60); }
+function dec(m){ return m === null ? "" : (Math.round(m / 60 * 100) / 100).toFixed(2); }
+function iso(d){ var p = String(d).split("/"); return p.length === 3 ? p[2] + "-" + p[1] + "-" + p[0] : d; }
+function dkey(d){ var p = String(d).split("/"); return p[2] + p[1] + p[0]; }
+function utcMs(date, hhmm){ var p = String(date).split("/"), t = mins(hhmm); return t === null ? null : Date.UTC(+p[2], +p[1] - 1, +p[0], 0, t); }
+function lt(ms){
+  try{ TZF = TZF || new Intl.DateTimeFormat("en-GB", {timeZone: "Europe/Rome", hour: "2-digit", minute: "2-digit", hourCycle: "h23"}); return TZF.format(new Date(ms)); }
+  catch(e){ var d = new Date(ms + 3600000); return pad(d.getUTCHours()) + ":" + pad(d.getUTCMinutes()); }
+}
+function ics8(ms){ var d = new Date(ms); return d.getUTCFullYear() + pad(d.getUTCMonth() + 1) + pad(d.getUTCDate()) + "T" + pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + "00Z"; }
+function wd(date){ var p = String(date).split("/"); return new Date(Date.UTC(+p[2], +p[1] - 1, +p[0])).toLocaleDateString("en-GB", {weekday: "short", timeZone: "UTC"}); }
+function decodeData(d){
+  var b = d.replace(/-/g, "+").replace(/_/g, "/"); while(b.length % 4) b += "=";
+  return JSON.parse(decodeURIComponent(escape(atob(b))));
+}
+function jget(k, d){ try{ var t = localStorage.getItem(k); return t ? JSON.parse(t) : d; }catch(e){ return d; } }
+function jset(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+function crewTxt(it){
+  var order = {CPT: 0, PIL: 1, AVR: 2};
+  return (it.crew || []).slice().sort(function(a, b){ return (order[a.role] === undefined ? 3 : order[a.role]) - (order[b.role] === undefined ? 3 : order[b.role]); }).map(function(c){
+    var m = String(c.name).match(/^(.*?)\s*-\s*(CA\d+)\s*$/i), nm = tc(m ? m[1] : c.name), role = c.role === "PIL" ? "FO" : c.role === "AVR" ? (m ? m[2].toUpperCase() : "CA") : c.role;
+    return role + " " + nm;
+  });
+}
+function myRole(it){
+  var sur = String(R.login || "").replace(/^[A-Za-z]/, "").toLowerCase(); if(!sur) return "";
+  var me = (it.crew || []).filter(function(c){ return String(c.name).toLowerCase().indexOf(sur) >= 0; })[0];
+  return me ? (me.role === "CPT" ? "PIC" : me.role === "PIL" ? "SIC" : "") : "";
+}
+function names(it, role){ return (it.crew || []).filter(function(c){ return c.role === role; }).map(function(c){ return tc(String(c.name).replace(/\s*-\s*CA\d+\s*$/i, "")); }).join(" / "); }
+
+/* ---------- days and calendar events ---------- */
+function days(){
+  var map = {}, order = [];
+  R.items.forEach(function(it){ if(!map[it.date]){ map[it.date] = {date: it.date, items: []}; order.push(it.date); } map[it.date].items.push(it); });
+  return order.map(function(d){ return map[d]; }).sort(function(a, b){ return dkey(a.date) < dkey(b.date) ? -1 : 1; });
+}
+function firstOf(list){ for(var i = 0; i < list.length; i++) if(list[i]) return list[i]; return ""; }
+function lastOf(list){ for(var i = list.length - 1; i >= 0; i--) if(list[i]) return list[i]; return ""; }
+function chainOf(legs){
+  var parts = [], cur = [];
+  function flush(){ if(cur.length){ parts.push(cur.join("-")); cur = []; } }
+  legs.forEach(function(l){
+    if(l.kind === "flight"){ if(!cur.length || cur[cur.length - 1] !== l.from) cur.push(l.from); cur.push(l.to); }
+    else { flush(); parts.push(l.code); }
+  });
+  flush(); return parts.join(" ");
+}
+function crewLines(legs){
+  var fl = legs.filter(function(l){ return l.kind === "flight" && !l.mg && !l.tr; });
+  if(!fl.length) return [];
+  var sets = fl.map(crewTxt), same = sets.every(function(s){ return s.join("|") === sets[0].join("|"); });
+  if(same) return ["Crew:"].concat(sets[0].length ? sets[0] : ["not available yet"]);
+  var out = [];
+  fl.forEach(function(l, i){ out.push(l.number + " crew:"); out = out.concat(sets[i].length ? sets[i] : ["not available yet"]); });
+  return out;
+}
+function dayEvent(day){
+  var legs = day.items.filter(function(i){ return i.kind === "flight" || i.kind === "other"; });
+  if(!legs.length){
+    return day.items.some(function(i){ return i.kind === "off"; }) ? {off: true, date: day.date} : null;
+  }
+  var first = legs[0], last = legs[legs.length - 1];
+  var dsTxt = firstOf(legs.map(function(l){ return l.ds; })) || first.off || first.start, deTxt = lastOf(legs.map(function(l){ return l.de; })) || last.on || last.end;
+  var start = utcMs(day.date, dsTxt); if(start === null) return null;
+  var end = utcMs(day.date, deTxt); if(end === null || end <= start) end = (end === null ? start + 4 * 3600000 : end + 86400000);
+  function legMs(t){ var m = utcMs(day.date, t); if(m === null) return null; while(m < start) m += 86400000; return m; }
+  var fAp = first.kind === "flight" ? first.from : "", pm = fAp ? PICK[fAp] : null, pick = pm ? start - pm * 60000 : null;
+  var title = "Report " + lt(start) + " " + chainOf(legs);
+  var lines = ["Report " + lt(start) + ", release " + lt(end) + " (local time)"];
+  if(pick !== null) lines.push("Hotel pick-up " + lt(pick) + " (" + pm + " min before report)");
+  lines.push("", "Flights:");
+  legs.forEach(function(l){
+    if(l.kind === "flight"){
+      var o = legMs(l.off), n = legMs(l.on);
+      lines.push(l.number + " " + l.from + "-" + l.to + (o !== null && n !== null ? " " + lt(o) + "-" + lt(n) : "") + (l.tr ? " (transfer)" : l.mg ? " (passenger)" : "") + (l.meal ? " (crew meal)" : "") + (l.reg ? " " + l.reg + (l.type ? " " + l.type : "") : ""));
+    } else {
+      var s = legMs(l.start), e = legMs(l.end);
+      lines.push(l.code + (s !== null && e !== null ? " " + lt(s) + "-" + lt(e) : ""));
+    }
+  });
+  var cl = crewLines(legs); if(cl.length){ lines.push(""); lines = lines.concat(cl); }
+  return {off: false, date: day.date, start: start, end: end, title: title, notes: lines, pick: pick, airport: fAp, uid: "roster-" + dkey(day.date) + "@flightbriefing"};
+}
+function events(){
+  return days().map(dayEvent).filter(function(e){ return e && (!e.off || OPTS.off); });
+}
+
+/* ---------- ICS ---------- */
+function u8(ch){ var c = ch.codePointAt(0); return c < 128 ? 1 : c < 2048 ? 2 : c < 65536 ? 3 : 4; }
+function fold(line){
+  var out = [], cur = "", n = 0;
+  for(var i = 0; i < line.length;){
+    var cp = line.codePointAt(i), ch = String.fromCodePoint(cp), b = u8(ch);
+    if(n + b > 73){ out.push(cur); cur = " "; n = 1; }
+    cur += ch; n += b; i += ch.length;
+  }
+  out.push(cur); return out.join("\r\n");
+}
+function ie(s){ return String(s).replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n"); }
+function nextDay(date){ var p = String(date).split("/"), d = new Date(Date.UTC(+p[2], +p[1] - 1, +p[0] + 1)); return d.getUTCFullYear() + pad(d.getUTCMonth() + 1) + pad(d.getUTCDate()); }
+function ics(){
+  var L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//FlightBriefing//Roster//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "X-WR-CALNAME:Roster"], stamp = ics8(Date.now());
+  events().forEach(function(e){
+    L.push("BEGIN:VEVENT", "UID:" + (e.off ? "roster-" + dkey(e.date) + "-off@flightbriefing" : e.uid), "DTSTAMP:" + stamp);
+    if(e.off){ L.push("DTSTART;VALUE=DATE:" + dkey(e.date), "DTEND;VALUE=DATE:" + nextDay(e.date), "SUMMARY:Day off", "TRANSP:TRANSPARENT"); }
+    else {
+      L.push("DTSTART:" + ics8(e.start), "DTEND:" + ics8(e.end), "SUMMARY:" + ie(e.title));
+      if(e.airport) L.push("LOCATION:" + ie(e.airport));
+      L.push("DESCRIPTION:" + ie(e.notes.join("\n")), "TRANSP:OPAQUE");
+    }
+    L.push("END:VEVENT");
+  });
+  L.push("END:VCALENDAR");
+  return L.map(fold).join("\r\n") + "\r\n";
+}
+
+/* ---------- logbook CSV ---------- */
+function included(it){
+  if(R.skip[it.id]) return false;
+  if(it.kind === "flight") return !it.mg && !it.tr;
+  if(it.kind === "other") return SIM.indexOf(it.code) >= 0;
+  return false;
+}
+function sortKey(it){ return dkey(it.date) + ("0000" + (mins(it.off || it.start) || 0)).slice(-4); }
+function rows(){ return R.items.filter(included).sort(function(a, b){ return sortKey(a) < sortKey(b) ? -1 : 1; }); }
+function q(v){ v = String(v == null ? "" : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+function csv(){
+  var L = [["Date", "Type", "Flight", "From", "To", "Off block UTC", "On block UTC", "Block time", "Block hours", "Aircraft type", "Registration", "My role", "PIC", "SIC", "Cabin crew", "Remarks"].join(",")];
+  rows().forEach(function(it){
+    var r;
+    if(it.kind === "flight"){ var b = blockMin(it.off, it.on); r = [iso(it.date), "Flight", it.number, it.from, it.to, it.off, it.on, hm(b), dec(b), it.type, it.reg, myRole(it), names(it, "CPT"), names(it, "PIL"), names(it, "AVR"), it.meal ? "Crew meal" : ""]; }
+    else { var bs = blockMin(it.start, it.end); r = [iso(it.date), "Simulator", it.code, "", "", it.start, it.end, hm(bs), dec(bs), "", "", "", "", "", "", "Simulator session"]; }
+    L.push(r.map(q).join(","));
+  });
+  return L.join("\r\n") + "\r\n";
+}
+
+/* ---------- files ---------- */
+function monthTag(){
+  var ds = R.items.map(function(i){ return iso(i.date); }).sort(); return ds.length ? ds[Math.floor(ds.length / 2)].slice(0, 7) : "roster";
+}
+function makeFile(kind){
+  var isIcs = kind === "ics", name = (isIcs ? "roster-" : "logbook-") + monthTag() + (isIcs ? ".ics" : ".csv");
+  var blob = new Blob([isIcs ? ics() : "\ufeff" + csv()], {type: isIcs ? "text/calendar" : "text/csv"}), file = null;
+  try{ file = new File([blob], name, {type: isIcs ? "text/calendar" : "text/csv"}); }catch(e){}
+  return {blob: blob, file: file, name: name};
+}
+function download(kind){
+  var f = makeFile(kind), a = document.createElement("a");
+  a.href = URL.createObjectURL(f.blob); a.download = f.name; document.body.appendChild(a); a.click();
+  setTimeout(function(){ try{ document.body.removeChild(a); }catch(e){} }, 500);
+}
+function share(kind){
+  var f = makeFile(kind);
+  if(f.file && navigator.canShare && navigator.canShare({files: [f.file]})) navigator.share({files: [f.file], title: f.name}).catch(function(){});
+  else download(kind);
+}
+
+/* ---------- screen ---------- */
+function period(){
+  var ds = R.items.map(function(i){ return dkey(i.date); }).sort(); if(!ds.length) return "";
+  function f(x){ return x.slice(6) + "/" + x.slice(4, 6) + "/" + x.slice(0, 4); }
+  return f(ds[0]) + " to " + f(ds[ds.length - 1]);
+}
+function startAirports(){
+  var set = {};
+  days().forEach(function(d){ var legs = d.items.filter(function(i){ return i.kind === "flight" || i.kind === "other"; }); if(legs.length && legs[0].kind === "flight") set[legs[0].from] = 1; });
+  return Object.keys(set).sort();
+}
+function previewHtml(){
+  var ev = events(), h = "";
+  ev.forEach(function(e){
+    if(e.off){ h += '<div class="day off"><b class="num">' + esc(wd(e.date)) + ' ' + esc(e.date.slice(0, 5)) + '</b> Day off</div>'; return; }
+    h += '<details class="day"><summary><b class="num">' + esc(wd(e.date)) + ' ' + esc(e.date.slice(0, 5)) + '</b> ' + esc(e.title) + (e.pick !== null ? '<br><span class="sub">Hotel pick-up ' + lt(e.pick) + '</span>' : '') + '</summary><pre>' + esc(e.notes.join("\n")) + '</pre></details>';
+  });
+  return h || '<p class="hint">There are no duty days in this roster.</p>';
+}
+function calTab(){
+  var ev = events(), n = ev.filter(function(e){ return !e.off; }).length, aps = startAirports();
+  var h = '<div class="panel"><h2>Calendar</h2><p style="margin:0">' + n + ' duty days from ' + esc(period()) + '. Each day is one event that starts at the report time.</p>' +
+    '<div class="row2"><button class="btn primary" type="button" id="shareics">Add to Calendar (share)</button><button class="btn" type="button" id="dlics">Save .ics file</button></div>' +
+    '<p class="hint">Times are shown in Italian local time. Tap Add to Calendar, then choose Calendar in the share sheet. If it is not listed, save the file and tap it in the Files app.</p></div>';
+  h += '<div class="panel"><h2>Hotel pick-up</h2><p class="hint" style="margin:0 0 10px">For each city where a day starts, enter how many minutes before the report time the pick-up from the hotel is. Leave it empty where you start from home.</p><div class="pick">' +
+    aps.map(function(a){ return '<label>' + esc(a) + '<input type="number" inputmode="numeric" min="0" max="240" placeholder="min" data-pick="' + esc(a) + '" value="' + (PICK[a] || "") + '"></label>'; }).join("") + '</div></div>';
+  h += '<div class="panel"><h2>Days off</h2><div class="chips"><button class="chip" type="button" id="offtoggle" aria-pressed="' + OPTS.off + '">Add days off to the calendar</button></div></div>';
+  h += '<div class="panel"><h2>Preview</h2><p class="hint" style="margin:0 0 10px">Tap a day to see the notes that go into the event.</p><div class="list" id="prev">' + previewHtml() + '</div></div>';
+  h += '<div class="panel"><h2>Share with your family</h2><p style="margin:0">In the Calendar app tap Calendars, then Add Calendar, and name it Roster. Tap the (i) next to it, add your family under Add Person, and choose Roster as the calendar when you add the events. The events then appear on their devices too. Importing the same roster again updates the events instead of adding them twice.</p></div>';
+  return h;
+}
+function logTab(){
+  var rs = rows(), fl = rs.filter(function(x){ return x.kind === "flight"; }), sm = rs.filter(function(x){ return x.kind !== "flight"; }), total = 0, simTotal = 0;
+  fl.forEach(function(x){ total += blockMin(x.off, x.on) || 0; }); sm.forEach(function(x){ simTotal += blockMin(x.start, x.end) || 0; });
+  var h = '<div class="panel"><h2>Logbook file</h2><p style="margin:0">' + fl.length + ' flights, ' + hm(total) + ' scheduled block time' + (sm.length ? ', ' + sm.length + ' simulator sessions, ' + hm(simTotal) : '') + '</p>' +
+    '<div class="row2"><button class="btn primary" type="button" id="sharecsv">Share to PilotLog</button><button class="btn" type="button" id="dlcsv">Save CSV file</button></div>' +
+    '<p class="hint">Scheduled UTC times. Flights marked mg are left out and flights with a crew meal (P) are included.</p></div>';
+  var codes = {}; R.items.forEach(function(x){ if(x.kind === "other") codes[x.code] = (codes[x.code] || 0) + 1; });
+  var cl = Object.keys(codes);
+  if(cl.length) h += '<div class="panel"><h2>Other duties</h2><p class="hint" style="margin:0 0 10px">Tap the codes that are simulator sessions. They are added to the file and remembered for next month.</p><div class="chips">' +
+    cl.map(function(c){ return '<button class="chip" type="button" data-code="' + esc(c) + '" aria-pressed="' + (SIM.indexOf(c) >= 0) + '">' + esc(c) + ' (' + codes[c] + ')</button>'; }).join("") + '</div></div>';
+  var all = R.items.filter(function(x){ return (x.kind === "flight" && !x.mg && !x.tr) || (x.kind === "other" && SIM.indexOf(x.code) >= 0); }).sort(function(a, b){ return sortKey(a) < sortKey(b) ? -1 : 1; });
+  h += '<div class="panel"><h2>Entries</h2><p class="hint" style="margin:0 0 10px">Tap an entry to leave it out of the file.</p><div class="list">' + all.map(function(x){
+    var on = !R.skip[x.id], box = '<span class="box">' + (on ? '\u2713' : '') + '</span>';
+    if(x.kind === "flight"){
+      var b = blockMin(x.off, x.on), c1 = names(x, "CPT"), c2 = names(x, "PIL");
+      return '<button class="item" type="button" data-id="' + x.id + '" aria-pressed="' + on + '">' + box + '<span><b class="num">' + esc(x.number) + '</b> ' + esc(x.from) + ' to ' + esc(x.to) + (x.meal ? '<span class="tag">P</span>' : '') +
+        '<br><span class="sub num">' + esc(x.date) + ', ' + esc(x.off) + ' to ' + esc(x.on) + ', block ' + hm(b) + (x.reg || x.type ? ', ' + esc(x.reg) + ' ' + esc(x.type) : '') + ((c1 || c2) ? '<br>PIC ' + esc(c1 || "-") + ', SIC ' + esc(c2 || "-") : '') + '</span></span></button>';
+    }
+    return '<button class="item" type="button" data-id="' + x.id + '" aria-pressed="' + on + '">' + box + '<span><b>' + esc(x.code) + '</b><span class="tag">Simulator</span><br><span class="sub num">' + esc(x.date) + ', ' + esc(x.start) + ' to ' + esc(x.end) + ', ' + hm(blockMin(x.start, x.end)) + '</span></span></button>';
+  }).join("") + '</div></div>';
+  return h;
+}
+function render(){
+  var app = document.getElementById("app"), h = "";
+  if(INTAKE.length) h += '<div class="panel"><p class="err" style="margin:0">' + INTAKE.map(esc).join("<br>") + '</p></div>';
+  if(!R){
+    h += '<div class="panel"><h2>No roster yet</h2><p>Open the <b>monthly roster</b> page on the portal and tap your bookmark there. The month arrives here, ready for your calendar and your logbook.</p></div>';
+    app.innerHTML = h; return;
+  }
+  h += '<div class="tabs"><button class="chip" type="button" data-tab="cal" aria-pressed="' + (TAB === "cal") + '">Calendar</button><button class="chip" type="button" data-tab="log" aria-pressed="' + (TAB === "log") + '">Logbook</button></div>';
+  h += TAB === "cal" ? calTab() : logTab();
+  h += '<div class="panel"><p class="hint" style="margin:0 0 10px">The roster is kept on this iPad only, including crew names.</p><button class="btn small" type="button" id="clear">Delete this roster</button></div>';
+  app.innerHTML = h;
+}
+function intake(o){
+  INTAKE = [];
+  if(!o || o.kind !== "roster"){ INTAKE = (o && o.errors && o.errors.length) ? o.errors : ["This is not roster data. Open the monthly roster page and tap the bookmark there."]; return; }
+  o.items.forEach(function(it, i){ it.id = i; });
+  R = {login: o.login || "", items: o.items, skip: {}, errors: o.errors || []};
+  if(R.errors.length) INTAKE = R.errors;
+  jset(K.data, R);
+}
+document.addEventListener("click", function(e){
+  var t = e.target.closest("button"); if(!t) return;
+  if(t.dataset.tab){ TAB = t.dataset.tab; jset(K.tab, TAB); render(); return; }
+  if(!R) return;
+  if(t.id === "shareics"){ share("ics"); return; }
+  if(t.id === "dlics"){ download("ics"); return; }
+  if(t.id === "sharecsv"){ share("csv"); return; }
+  if(t.id === "dlcsv"){ download("csv"); return; }
+  if(t.id === "offtoggle"){ OPTS.off = !OPTS.off; jset(K.opts, OPTS); render(); return; }
+  if(t.id === "clear"){ if(window.confirm("Delete this roster from the iPad?")){ R = null; try{ localStorage.removeItem(K.data); }catch(x){} render(); } return; }
+  if(t.dataset.code){ var i = SIM.indexOf(t.dataset.code); if(i >= 0) SIM.splice(i, 1); else SIM.push(t.dataset.code); jset(K.sim, SIM); render(); return; }
+  if(t.dataset.id !== undefined){ var id = +t.dataset.id; if(R.skip[id]) delete R.skip[id]; else R.skip[id] = true; jset(K.data, R); render(); }
+});
+document.addEventListener("input", function(e){
+  var a = e.target.dataset && e.target.dataset.pick; if(!a) return;
+  var v = parseInt(e.target.value, 10); if(v > 0) PICK[a] = v; else delete PICK[a];
+  jset(K.pick, PICK); var p = document.getElementById("prev"); if(p) p.innerHTML = previewHtml();
+});
+(function init(){
+  (function findPhoto(list){
+    var n = list.shift(); if(!n) return;
+    var im = new Image();
+    im.onload = function(){ document.body.style.setProperty("--photo", 'url("' + n + '")'); document.body.classList.add("photo"); };
+    im.onerror = function(){ findPhoto(list); };
+    im.src = n;
+  })(["background.jpg","background.jpeg","background.png","background.webp","Background.jpg","background.JPG","background.JPEG","background.PNG"]);
+  R = jget(K.data, null); SIM = jget(K.sim, []); PICK = jget(K.pick, {}); OPTS = jget(K.opts, {off: false}); TAB = jget(K.tab, "cal");
+  var raw = new URLSearchParams(location.hash.slice(1)).get("d");
+  if(raw){
+    try{ intake(decodeData(raw)); }catch(e){ INTAKE = ["The roster data could not be read. Tap the bookmark on the monthly roster page again."]; }
+    try{ history.replaceState(null, "", location.pathname + location.search); }catch(e){}
+  }
+  render();
+})();
+window.__t = {ics: ics, csv: csv, events: events, days: days};
+</script>
+<script src="menu.js"></script>
+</body>
+</html>

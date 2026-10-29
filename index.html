@@ -15,7 +15,7 @@ body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.45 var(--body
 main,.top{max-width:1130px;margin:0 auto}
 .top{margin-bottom:16px;display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px;background:var(--bar);color:#12232b;border-radius:14px;padding:14px 22px}
 .top img{display:block;height:64px;width:auto;max-width:60%}.top h1{margin:0;font-size:22px;font-weight:650}
-.tiles{display:grid;gap:16px}@media (min-width:760px){.tiles{grid-template-columns:repeat(3,1fr)}}
+.tiles{display:grid;gap:16px}@media (min-width:760px){.tiles{grid-template-columns:repeat(2,1fr)}}@media (min-width:1000px){.tiles{grid-template-columns:repeat(4,1fr)}}
 .tile{display:block;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;color:inherit;text-decoration:none;min-height:150px}
 .tile h2{margin:0 0 8px;font-size:21px}.tile p{margin:0;color:var(--muted)}
 .tile.soon{opacity:.85}
@@ -29,6 +29,7 @@ main,.top{max-width:1130px;margin:0 auto}
   <div class="tiles">
     <a class="tile" href="dow.html"><h2>DOW and DOI calculator</h2><p>Dry operating weight and index for any aircraft, operation and crew setup.</p></a>
     <a class="tile" href="briefing.html"><h2>Flight briefing</h2><p>Briefing cards for your flights, ready to save as a PDF.</p></a>
+    <a class="tile" href="roster.html"><h2>Roster</h2><p>Your monthly roster for the iPhone calendar and your logbook.</p></a>
     <a class="tile soon" href="meo.html"><h2>mEO</h2><p>Single engine departure procedures for every airport.</p><span class="tag">Coming soon</span></a>
   </div>
 </main>
