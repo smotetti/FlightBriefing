@@ -52,8 +52,9 @@ a{color:inherit}
 <main id="app"></main>
 <script>
 "use strict";
-var K = {data: "roster.data.v1", sim: "roster.sim.v1", pick: "roster.pick.v1", opts: "roster.opts.v1", tab: "roster.tab.v1"};
-var R = null, SIM = [], PICK = {}, OPTS = {off: false}, TAB = "cal", INTAKE = [], TZF = null;
+var K = {data: "roster.data.v1", sim: "roster.sim.v1", pick: "roster.pick.v1", opts: "roster.opts.v1", tab: "roster.tab.v1", all: "roster.all.v1", token: "roster.token.v1", gist: "roster.gist.v1"};
+var R = null, SIM = [], PICK = {}, OPTS = {off: false, crew: true}, TAB = "cal", INTAKE = [], TZF = null;
+var ALL = {byDay: {}}, TOKEN = "", GIST = null, PUB = {msg: "", err: false, busy: false};
 
 /* ---------- helpers ---------- */
 function esc(s){ return String(s == null ? "" : s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
@@ -94,9 +95,18 @@ function names(it, role){ return (it.crew || []).filter(function(c){ return c.ro
 
 /* ---------- days and calendar events ---------- */
 function days(){
-  var map = {}, order = [];
-  R.items.forEach(function(it){ if(!map[it.date]){ map[it.date] = {date: it.date, items: []}; order.push(it.date); } map[it.date].items.push(it); });
-  return order.map(function(d){ return map[d]; }).sort(function(a, b){ return dkey(a.date) < dkey(b.date) ? -1 : 1; });
+  return Object.keys(ALL.byDay).sort().map(function(k){ return ALL.byDay[k]; });
+}
+function mergeIntoAll(items){
+  var keys = items.map(function(i){ return dkey(i.date); }).sort(); if(!keys.length) return;
+  var lo = keys[0], hi = keys[keys.length - 1];
+  Object.keys(ALL.byDay).forEach(function(k){ if(k >= lo && k <= hi) delete ALL.byDay[k]; });
+  items.forEach(function(it){
+    var k = dkey(it.date); if(!ALL.byDay[k]) ALL.byDay[k] = {date: it.date, items: []};
+    ALL.byDay[k].items.push(it);
+  });
+  var t = new Date(Date.now() - 365 * 86400000), cut = t.getUTCFullYear() + pad(t.getUTCMonth() + 1) + pad(t.getUTCDate());
+  Object.keys(ALL.byDay).forEach(function(k){ if(k < cut) delete ALL.byDay[k]; });
 }
 function firstOf(list){ for(var i = 0; i < list.length; i++) if(list[i]) return list[i]; return ""; }
 function lastOf(list){ for(var i = list.length - 1; i >= 0; i--) if(list[i]) return list[i]; return ""; }
@@ -110,6 +120,7 @@ function chainOf(legs){
   flush(); return parts.join(" ");
 }
 function crewLines(legs){
+  if(!OPTS.crew) return [];
   var fl = legs.filter(function(l){ return l.kind === "flight" && !l.mg && !l.tr; });
   if(!fl.length) return [];
   var sets = fl.map(crewTxt), same = sets.every(function(s){ return s.join("|") === sets[0].join("|"); });
@@ -163,9 +174,9 @@ function fold(line){
 function ie(s){ return String(s).replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n"); }
 function nextDay(date){ var p = String(date).split("/"), d = new Date(Date.UTC(+p[2], +p[1] - 1, +p[0] + 1)); return d.getUTCFullYear() + pad(d.getUTCMonth() + 1) + pad(d.getUTCDate()); }
 function ics(){
-  var L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//FlightBriefing//Roster//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "X-WR-CALNAME:Roster"], stamp = ics8(Date.now());
+  var L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//FlightBriefing//Roster//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "X-WR-CALNAME:Roster", "REFRESH-INTERVAL;VALUE=DURATION:PT1H", "X-PUBLISHED-TTL:PT1H"], stamp = ics8(Date.now()), seq = Math.floor(Date.now() / 60000);
   events().forEach(function(e){
-    L.push("BEGIN:VEVENT", "UID:" + (e.off ? "roster-" + dkey(e.date) + "-off@flightbriefing" : e.uid), "DTSTAMP:" + stamp);
+    L.push("BEGIN:VEVENT", "UID:" + (e.off ? "roster-" + dkey(e.date) + "-off@flightbriefing" : e.uid), "DTSTAMP:" + stamp, "LAST-MODIFIED:" + stamp, "SEQUENCE:" + seq);
     if(e.off){ L.push("DTSTART;VALUE=DATE:" + dkey(e.date), "DTEND;VALUE=DATE:" + nextDay(e.date), "SUMMARY:Day off", "TRANSP:TRANSPARENT"); }
     else {
       L.push("DTSTART:" + ics8(e.start), "DTEND:" + ics8(e.end), "SUMMARY:" + ie(e.title));
@@ -231,24 +242,80 @@ function startAirports(){
   days().forEach(function(d){ var legs = d.items.filter(function(i){ return i.kind === "flight" || i.kind === "other"; }); if(legs.length && legs[0].kind === "flight") set[legs[0].from] = 1; });
   return Object.keys(set).sort();
 }
+function rosterRange(){ var ds = R.items.map(function(i){ return dkey(i.date); }).sort(); return [ds[0], ds[ds.length - 1]]; }
 function previewHtml(){
-  var ev = events(), h = "";
+  var rg = R ? rosterRange() : null;
+  var ev = events().filter(function(e){ return !rg || (dkey(e.date) >= rg[0] && dkey(e.date) <= rg[1]); }), h = "";
   ev.forEach(function(e){
     if(e.off){ h += '<div class="day off"><b class="num">' + esc(wd(e.date)) + ' ' + esc(e.date.slice(0, 5)) + '</b> Day off</div>'; return; }
     h += '<details class="day"><summary><b class="num">' + esc(wd(e.date)) + ' ' + esc(e.date.slice(0, 5)) + '</b> ' + esc(e.title) + (e.pick !== null ? '<br><span class="sub">Hotel pick-up ' + lt(e.pick) + '</span>' : '') + '</summary><pre>' + esc(e.notes.join("\n")) + '</pre></details>';
   });
   return h || '<p class="hint">There are no duty days in this roster.</p>';
 }
+function feedUrl(){ return GIST ? "https://gist.githubusercontent.com/" + GIST.owner + "/" + GIST.id + "/raw/roster.ics" : ""; }
+function ghReq(method, path, body){
+  return fetch("https://api.github.com" + path, {method: method, headers: {"Authorization": "Bearer " + TOKEN, "Accept": "application/vnd.github+json", "Content-Type": "application/json"}, body: body ? JSON.stringify(body) : undefined})
+    .then(function(r){ return r.text().then(function(t){ var j = {}; try{ j = JSON.parse(t); }catch(e){} return {ok: r.ok, status: r.status, json: j}; }); });
+}
+function explain(r){
+  return r.status === 401 ? "GitHub did not accept the token. Check that you pasted all of it." :
+    (r.status === 403 || r.status === 404) ? "The token is not allowed to manage gists. Create it again with only the gist box ticked." : "GitHub answered with error " + r.status + ".";
+}
+function pubMsg(m, err){ PUB.msg = m; PUB.err = !!err; PUB.busy = false; render(); }
+function publish(){
+  if(!TOKEN || PUB.busy) return Promise.resolve();
+  PUB.busy = true; PUB.msg = "Publishing..."; PUB.err = false; render();
+  var content = ics();
+  var p = GIST ? ghReq("PATCH", "/gists/" + GIST.id, {files: {"roster.ics": {content: content}}})
+               : ghReq("POST", "/gists", {description: "Roster calendar", "public": false, files: {"roster.ics": {content: content}}});
+  return p.then(function(r){
+    if(!r.ok){
+      if(GIST && r.status === 404){ GIST = null; jset(K.gist, null); pubMsg("The published calendar no longer exists. Tap Publish calendar to create it again.", true); return; }
+      pubMsg(explain(r), true); return;
+    }
+    if(!GIST) GIST = {id: r.json.id, owner: r.json.owner && r.json.owner.login};
+    GIST.updated = Date.now(); jset(K.gist, GIST);
+    pubMsg("Calendar updated at " + lt(Date.now()) + ".", false);
+  }).catch(function(){ pubMsg("Could not reach GitHub. Check your connection and try again.", true); });
+}
+function unpublish(){
+  if(!GIST) return;
+  ghReq("DELETE", "/gists/" + GIST.id).then(function(r){
+    if(r.ok || r.status === 404){ GIST = null; jset(K.gist, null); pubMsg("Publishing stopped. Phones that subscribed will no longer receive updates.", false); }
+    else pubMsg(explain(r), true);
+  }).catch(function(){ pubMsg("Could not reach GitHub.", true); });
+}
+function pubPanel(){
+  var h = '<div class="panel"><h2>Subscribed calendar</h2>';
+  if(!TOKEN){
+    h += '<p style="margin:0">Publish your calendar once. Your phones and your family\'s phones then keep it up to date by themselves, including new months and removed days.</p>' +
+      '<details class="day" style="margin-top:10px"><summary><b>How to get the token (once)</b></summary><pre>1. In Safari open github.com/settings/tokens and sign in.\n2. Tap Generate new token, then Generate new token (classic).\n3. Note: Roster. Expiration: No expiration.\n4. Tick only the box named gist.\n5. Tap Generate token at the bottom and copy the token it shows. It starts with ghp_.\n6. Paste it below.</pre></details>' +
+      '<div class="row2"><input id="tokeninput" type="password" autocomplete="off" autocapitalize="off" placeholder="Paste the token here" style="flex:1;min-width:220px;min-height:52px;font:inherit;font-size:17px;color:var(--ink);background:var(--paper);border:1.5px solid var(--line);border-radius:10px;padding:0 12px"><button class="btn primary" type="button" id="savetoken">Save token</button></div>';
+  } else if(!GIST){
+    h += '<p style="margin:0">Token saved on this iPad.</p><div class="row2"><button class="btn primary" type="button" id="publish">Publish calendar</button><button class="btn small" type="button" id="forgettoken">Remove token</button></div>';
+  } else {
+    var u = feedUrl();
+    h += '<p style="margin:0">Your calendar is published and updates itself each time you collect a roster.</p>' +
+      '<div class="row2"><button class="btn primary" type="button" id="update">Update calendar now</button></div>' +
+      '<p class="hint">Subscribe a phone (once per phone):</p>' +
+      '<div class="row2"><a class="btn" href="' + esc(u.replace(/^https:/, "webcal:")) + '">Subscribe on this device</a><button class="btn" type="button" id="shareurl">Share address</button><button class="btn" type="button" id="copyurl">Copy address</button></div>' +
+      '<p class="hint">On another phone you can also use Settings, Calendar, Accounts, Add Account, Other, Add Subscribed Calendar, and paste the address.</p>' +
+      '<div class="row2"><button class="btn small" type="button" id="unpublish">Stop publishing</button><button class="btn small" type="button" id="forgettoken">Remove token</button></div>';
+  }
+  if(PUB.msg) h += '<p class="' + (PUB.err ? "err" : "hint") + '" style="margin:10px 0 0">' + esc(PUB.msg) + '</p>';
+  return h + '</div>';
+}
 function calTab(){
-  var ev = events(), n = ev.filter(function(e){ return !e.off; }).length, aps = startAirports();
-  var h = '<div class="panel"><h2>Calendar</h2><p style="margin:0">' + n + ' duty days from ' + esc(period()) + '. Each day is one event that starts at the report time.</p>' +
-    '<div class="row2"><button class="btn primary" type="button" id="shareics">Add to Calendar (share)</button><button class="btn" type="button" id="dlics">Save .ics file</button></div>' +
-    '<p class="hint">Times are shown in Italian local time. Tap Add to Calendar, then choose Calendar in the share sheet. If it is not listed, save the file and tap it in the Files app.</p></div>';
+  var ev = events(), n = ev.filter(function(e){ return !e.off; }).length, aps = startAirports(), mine = 0;
+  var rg = rosterRange(); ev.forEach(function(e){ if(!e.off && dkey(e.date) >= rg[0] && dkey(e.date) <= rg[1]) mine++; });
+  var h = '<div class="panel"><h2>Calendar</h2><p style="margin:0">' + mine + ' duty days in this roster (' + esc(period()) + '), ' + n + ' in your calendar in total. Each day is one event that starts at the report time.</p>' +
+    '<p class="hint">Times are shown in Italian local time. New rosters are added to the calendar, and days that a new roster covers are replaced.</p></div>';
+  h += pubPanel();
   h += '<div class="panel"><h2>Hotel pick-up</h2><p class="hint" style="margin:0 0 10px">For each city where a day starts, enter how many minutes before the report time the pick-up from the hotel is. Leave it empty where you start from home.</p><div class="pick">' +
     aps.map(function(a){ return '<label>' + esc(a) + '<input type="number" inputmode="numeric" min="0" max="240" placeholder="min" data-pick="' + esc(a) + '" value="' + (PICK[a] || "") + '"></label>'; }).join("") + '</div></div>';
-  h += '<div class="panel"><h2>Days off</h2><div class="chips"><button class="chip" type="button" id="offtoggle" aria-pressed="' + OPTS.off + '">Add days off to the calendar</button></div></div>';
+  h += '<div class="panel"><h2>Options</h2><div class="chips"><button class="chip" type="button" id="offtoggle" aria-pressed="' + OPTS.off + '">Add days off</button><button class="chip" type="button" id="crewtoggle" aria-pressed="' + OPTS.crew + '">Include crew names</button></div></div>';
   h += '<div class="panel"><h2>Preview</h2><p class="hint" style="margin:0 0 10px">Tap a day to see the notes that go into the event.</p><div class="list" id="prev">' + previewHtml() + '</div></div>';
-  h += '<div class="panel"><h2>Share with your family</h2><p style="margin:0">In the Calendar app tap Calendars, then Add Calendar, and name it Roster. Tap the (i) next to it, add your family under Add Person, and choose Roster as the calendar when you add the events. The events then appear on their devices too. Importing the same roster again updates the events instead of adding them twice.</p></div>';
+  h += '<div class="panel"><h2>Import a file instead</h2><p class="hint" style="margin:0">A one-time copy of the calendar. It does not update by itself.</p><div class="row2"><button class="btn" type="button" id="shareics">Add to Calendar (share)</button><button class="btn" type="button" id="dlics">Save .ics file</button></div></div>';
   return h;
 }
 function logTab(){
@@ -287,11 +354,13 @@ function render(){
 }
 function intake(o){
   INTAKE = [];
-  if(!o || o.kind !== "roster"){ INTAKE = (o && o.errors && o.errors.length) ? o.errors : ["This is not roster data. Open the monthly roster page and tap the bookmark there."]; return; }
+  if(!o || o.kind !== "roster"){ INTAKE = (o && o.errors && o.errors.length) ? o.errors : ["This is not roster data. Open the monthly roster page and tap the bookmark there."]; return false; }
   o.items.forEach(function(it, i){ it.id = i; });
   R = {login: o.login || "", items: o.items, skip: {}, errors: o.errors || []};
   if(R.errors.length) INTAKE = R.errors;
   jset(K.data, R);
+  mergeIntoAll(JSON.parse(JSON.stringify(o.items))); jset(K.all, ALL);
+  return true;
 }
 document.addEventListener("click", function(e){
   var t = e.target.closest("button"); if(!t) return;
@@ -302,6 +371,13 @@ document.addEventListener("click", function(e){
   if(t.id === "sharecsv"){ share("csv"); return; }
   if(t.id === "dlcsv"){ download("csv"); return; }
   if(t.id === "offtoggle"){ OPTS.off = !OPTS.off; jset(K.opts, OPTS); render(); return; }
+  if(t.id === "crewtoggle"){ OPTS.crew = !OPTS.crew; jset(K.opts, OPTS); render(); return; }
+  if(t.id === "savetoken"){ var ti = document.getElementById("tokeninput"), tv = ti ? ti.value.trim() : ""; if(tv.length < 20){ pubMsg("That does not look like a token. Paste the whole token.", true); return; } TOKEN = tv; jset(K.token, TOKEN); PUB.msg = ""; render(); return; }
+  if(t.id === "forgettoken"){ TOKEN = ""; try{ localStorage.removeItem(K.token); }catch(x){} PUB.msg = ""; render(); return; }
+  if(t.id === "publish" || t.id === "update"){ publish(); return; }
+  if(t.id === "unpublish"){ if(window.confirm("Stop publishing? Phones that subscribed will no longer get updates.")) unpublish(); return; }
+  if(t.id === "copyurl"){ var cu = feedUrl(); if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(cu).then(function(){ pubMsg("Address copied.", false); }, function(){ pubMsg(cu, false); }); else pubMsg(cu, false); return; }
+  if(t.id === "shareurl"){ var su = feedUrl(); if(navigator.share) navigator.share({url: su, title: "Roster calendar"}).catch(function(){}); else pubMsg(su, false); return; }
   if(t.id === "clear"){ if(window.confirm("Delete this roster from the iPad?")){ R = null; try{ localStorage.removeItem(K.data); }catch(x){} render(); } return; }
   if(t.dataset.code){ var i = SIM.indexOf(t.dataset.code); if(i >= 0) SIM.splice(i, 1); else SIM.push(t.dataset.code); jset(K.sim, SIM); render(); return; }
   if(t.dataset.id !== undefined){ var id = +t.dataset.id; if(R.skip[id]) delete R.skip[id]; else R.skip[id] = true; jset(K.data, R); render(); }
@@ -319,15 +395,19 @@ document.addEventListener("input", function(e){
     im.onerror = function(){ findPhoto(list); };
     im.src = n;
   })(["background.jpg","background.jpeg","background.png","background.webp","Background.jpg","background.JPG","background.JPEG","background.PNG"]);
-  R = jget(K.data, null); SIM = jget(K.sim, []); PICK = jget(K.pick, {}); OPTS = jget(K.opts, {off: false}); TAB = jget(K.tab, "cal");
-  var raw = new URLSearchParams(location.hash.slice(1)).get("d");
+  R = jget(K.data, null); SIM = jget(K.sim, []); PICK = jget(K.pick, {}); OPTS = jget(K.opts, {off: false, crew: true}); if(OPTS.crew === undefined) OPTS.crew = true; TAB = jget(K.tab, "cal");
+  ALL = jget(K.all, {byDay: {}}); if(!ALL || !ALL.byDay) ALL = {byDay: {}};
+  TOKEN = jget(K.token, "") || ""; GIST = jget(K.gist, null);
+  if(R && !Object.keys(ALL.byDay).length){ mergeIntoAll(JSON.parse(JSON.stringify(R.items))); jset(K.all, ALL); }
+  var raw = new URLSearchParams(location.hash.slice(1)).get("d"), fresh = false;
   if(raw){
-    try{ intake(decodeData(raw)); }catch(e){ INTAKE = ["The roster data could not be read. Tap the bookmark on the monthly roster page again."]; }
+    try{ fresh = intake(decodeData(raw)); }catch(e){ INTAKE = ["The roster data could not be read. Tap the bookmark on the monthly roster page again."]; }
     try{ history.replaceState(null, "", location.pathname + location.search); }catch(e){}
   }
   render();
+  if(fresh && TOKEN && GIST) publish();
 })();
-window.__t = {ics: ics, csv: csv, events: events, days: days};
+window.__t = {ics: ics, csv: csv, events: events, days: days, publish: publish, feedUrl: feedUrl};
 </script>
 <script src="menu.js"></script>
 </body>
