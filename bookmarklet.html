@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Import button</title>
+<style>
+:root{--bar:#b4c3c9;--paper:#e8edef;--panel:rgba(255,255,255,.95);--ink:#12232b;--muted:#566a72;--line:#c6d2d6;--teal:#0e7a7a;--on-teal:#fff;
+  --body:"Avenir Next",-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif}
+@media (prefers-color-scheme:dark){:root{--paper:#0d1619;--panel:rgba(22,37,43,.94);--ink:#e5eef0;--muted:#8ea4ac;--line:#2a3e46;--teal:#38b6b6;--on-teal:#04181a}}
+*{box-sizing:border-box}[hidden]{display:none !important}
+body{margin:0;background:var(--paper);color:var(--ink);font:18px/1.5 var(--body);
+  padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+.photo::before{content:"";position:fixed;inset:0;z-index:-1;background:linear-gradient(rgba(8,18,22,.28),rgba(8,18,22,.5)),var(--photo) center/cover no-repeat}
+main,.top{max-width:900px;margin:0 auto}
+.top{margin-bottom:16px;display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px;background:var(--bar);color:#12232b;border-radius:14px;padding:14px 22px}
+.top img{display:block;height:64px;width:auto;max-width:60%}.top h1{margin:0;font-size:22px;font-weight:650}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+h2{margin:0 0 10px;font-size:19px}ol{margin:0;padding-left:22px}li{margin-bottom:10px}
+input[type=url]{width:100%;min-height:52px;font:16px/1.3 ui-monospace,Menlo,monospace;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:0 12px;margin-top:6px}
+textarea{width:100%;height:110px;font:13px/1.3 ui-monospace,Menlo,monospace;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px}
+.btn{min-height:56px;padding:0 20px;font:inherit;font-size:19px;font-weight:650;color:var(--on-teal);background:var(--teal);border:0;border-radius:12px;cursor:pointer;margin:10px 0}
+.msg{color:var(--muted);margin:4px 0 0}
+</style>
+</head>
+<body>
+<header class="top"><img id="logo" src="logo.png" alt="Air Dolomiti" onerror="this.hidden=true"><h1>Import button</h1></header>
+<main>
+  <div class="panel">
+    <h2>Set up once</h2>
+    <ol>
+      <li>Check that the address below is the page that opens your flight briefing (tap <b>Open it to test</b>). Then tap <b>Copy code</b>.</li>
+      <li>In Safari tap <b>Share</b>, then <b>Add Bookmark</b>. Name it <b>Briefing</b>, choose <b>Favorites</b> and save. This only saves this page for now.</li>
+      <li>Open your bookmarks (the book icon), choose <b>Favorites</b>, tap <b>Edit</b> and tap <b>Briefing</b>. Delete the address and paste the code you copied. Tap <b>Done</b>.</li>
+    </ol>
+    <button class="btn" id="copy" type="button">Copy code</button>
+    <p class="msg" id="msg"></p>
+    <label for="target"><b>Address of your briefing page</b></label>
+    <input id="target" type="url" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Address of your briefing page">
+    <p class="msg" id="tmsg"></p>
+    <p style="margin:6px 0 10px"><a href="#" id="testlink" target="_blank" rel="noopener">Open it to test</a></p>
+    <textarea id="code" readonly aria-label="Bookmark code"></textarea>
+  </div>
+  <div class="panel">
+    <h2>Use it on every flight</h2>
+    <ol>
+      <li>Log into the portal and open the <b>duty plan</b> page (the list of your days and flights). For the logbook, open the <b>monthly roster</b> page instead.</li>
+      <li>Tap the address bar and tap <b>Briefing</b> in your Favorites.</li>
+      <li>Wait while it collects every flight of today. The flight briefing page then opens with all the cards.</li>
+      <li>You can also tap <b>Briefing</b> on a single flight's <b>Details</b> page to add just that flight.</li>
+    </ol>
+  </div>
+</main>
+<script>
+function collect(BASE, go, LB){
+  go = go || function(u){ location.href = u; };
+  function clean(s){ return (s || "").replace(/\s+/g, " ").trim(); }
+  function txt(doc, sel){ var e = doc.querySelector(sel); return e ? clean(e.textContent) : ""; }
+  function cellsOf(row){ return row ? Array.prototype.slice.call(row.querySelectorAll("td")) : []; }
+  function lastCell(row){ var c = cellsOf(row); return c.length >= 2 ? clean(c[c.length - 1].textContent) : ""; }
+  function parseDetails(doc){
+    return {number: txt(doc, "#lblFlight"), callsign: txt(doc, "#lblCallSign"), registration: txt(doc, "#lblAC"), aircraftType: txt(doc, "#lblOPSACType"),
+      from: txt(doc, "#lblFrom"), to: txt(doc, "#lblTo"), std: txt(doc, "#lblSTD"), sta: txt(doc, "#lblSTA")};
+  }
+  function parseCrew(doc){
+    var table = doc.querySelector("#crewTable"), crew = [];
+    if(!table) return crew;
+    var onDuty = false;
+    Array.prototype.slice.call(table.querySelectorAll("tr")).forEach(function(row){
+      var title = row.querySelector("td.Title[colspan]");
+      if(title){ onDuty = clean(title.textContent).indexOf("On Duty") !== -1; return; }
+      var c = cellsOf(row);
+      if(onDuty && c.length === 2){
+        var role = clean(c[0].textContent), name = clean(c[1].textContent);
+        if(role && name) crew.push({role: role, name: name});
+      }
+    });
+    return crew;
+  }
+  function parseCatering(doc){
+    var table = doc.querySelector("#cateringTable"), max = {};
+    if(table){
+      Array.prototype.slice.call(table.querySelectorAll("tr")).forEach(function(row){
+        var c = cellsOf(row);
+        if(c.length < 6 || clean(c[0].textContent) !== "Class:") return;
+        var cls = clean(c[1].textContent), q = parseInt(clean(c[5].textContent), 10);
+        if(cls && !isNaN(q) && (!(cls in max) || q > max[cls])) max[cls] = q;
+      });
+    }
+    return {business: max["C"] || 0, economy: max["M"] || 0};
+  }
+  function parseMel(doc){
+    var rows = Array.prototype.slice.call(doc.querySelectorAll("table tr")), issues = [];
+    for(var i = 0; i < rows.length; i++){
+      var c = cellsOf(rows[i]);
+      if(c.length < 2 || clean(c[c.length - 2].textContent) !== "MEL and ATA Chapter:") continue;
+      issues.push({ata: clean(c[c.length - 1].textContent), description: lastCell(rows[i + 1]), deferment: lastCell(rows[i + 2]), ref: lastCell(rows[i + 3]), openDate: lastCell(rows[i + 4])});
+    }
+    return issues;
+  }
+  var TMO = (typeof window !== "undefined" && window.__tmo) || {req: 30000, base: 120000, perPage: 10000};
+  function getOnce(url){
+    var ctl = (typeof AbortController === "function") ? new AbortController() : null, timer = null;
+    var req = fetch(url, ctl ? {credentials: "include", signal: ctl.signal} : {credentials: "include"}).then(function(r){
+      if(!r.ok) throw new Error("HTTP " + r.status);
+      return r.text();
+    }).then(function(t){ return new DOMParser().parseFromString(t, "text/html"); });
+    var lim = new Promise(function(resolve, reject){ timer = setTimeout(function(){ try{ if(ctl) ctl.abort(); }catch(e){} reject(new Error("took too long")); }, TMO.req); });
+    return Promise.race([req, lim]).then(function(v){ clearTimeout(timer); return v; }, function(e){ clearTimeout(timer); throw e; });
+  }
+  function getDoc(url){
+    return getOnce(url).catch(function(e){
+      if(/^HTTP 4/.test(e.message)) throw e;
+      return getOnce(url);
+    });
+  }
+  function tabHref(doc, baseUrl, id, pageName){
+    var a = doc.getElementById(id), h = a && a.getAttribute("href");
+    if(h && h !== "#") return new URL(h, baseUrl).href;
+    return baseUrl.replace(/detailturnobb\.aspx/i, pageName);
+  }
+  function encode(obj){
+    return btoa(unescape(encodeURIComponent(JSON.stringify(obj)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+  var banner = null;
+  function say(t){
+    try{
+      if(!banner){
+        banner = document.createElement("div");
+        banner.style.cssText = "position:fixed;left:0;right:0;top:0;z-index:2147483647;background:#0e7a7a;color:#fff;font:600 20px -apple-system,Helvetica,Arial,sans-serif;padding:16px;text-align:center";
+        document.body.appendChild(banner);
+      }
+      banner.textContent = t;
+    }catch(e){}
+  }
+  var out = {v: 2, day: "", flights: [], errors: []}, done = false, TARGET = BASE, expected = 0, pagesDone = 0, pagesTotal = 0, melCache = {}, limit = null;
+  function tick(){ pagesDone++; if(pagesTotal) say("Loaded " + pagesDone + " of " + pagesTotal + " pages..."); }
+  function arm(ms){
+    if(limit) clearTimeout(limit);
+    limit = setTimeout(function(){
+      out.errors.push("Some pages took too long to load.");
+      if(expected > out.flights.length) out.errors.push((expected - out.flights.length) + " flight(s) could not be loaded at all.");
+      finish();
+    }, ms);
+  }
+  function finish(){
+    if(done) return; done = true;
+    if(limit) clearTimeout(limit);
+    if(out.flights){
+      out.flights.forEach(function(c){ if(c && c.pending > 0) c.errors.push("Some pages of this flight did not finish loading."); if(c) delete c.pending; });
+      out.flights.sort(function(a, b){ return (a.i === undefined ? 9999 : a.i) - (b.i === undefined ? 9999 : b.i); });
+      out.flights.forEach(function(c){ delete c.i; });
+    }
+    var u = TARGET + encode(out);
+    say("Opening the briefing...");
+    go(u);
+    setTimeout(function(){
+      try{
+        banner.textContent = "";
+        var a = document.createElement("a");
+        a.href = u; a.textContent = "Tap here to open the briefing";
+        a.style.cssText = "color:#fff;text-decoration:underline";
+        banner.appendChild(a);
+      }catch(e){}
+    }, 4000);
+  }
+  function loadFlight(url, doc0, idx){
+    var card = {flight: null, crew: [], pax: {business: 0, economy: 0}, mel: [], errors: [], pending: 0, i: idx};
+    var p0 = doc0 ? Promise.resolve(doc0) : getDoc(url);
+    return p0.then(function(doc){
+      card.flight = parseDetails(doc);
+      card.flight.date = new URL(url).searchParams.get("DataRif") || "";
+      card.pending = 3;
+      out.flights.push(card);
+      if(!doc0) tick();
+      function step(label, id, page, parse, assign, cacheKey){
+        var run = function(){ return getDoc(tabHref(doc, url, id, page)).then(parse); };
+        var p = cacheKey ? (melCache[cacheKey] || (melCache[cacheKey] = run())) : run();
+        return p.then(function(v){ assign(v); })
+          .catch(function(e){ card.errors.push(label + " page could not be read (" + e.message + ")."); })
+          .then(function(){ card.pending--; tick(); });
+      }
+      var key = card.flight.registration ? card.flight.registration + "|" + card.flight.date : "";
+      return Promise.all([
+        step("Crew", "crewLink", "crewturnoBB.aspx", parseCrew, function(v){ card.crew = v; }),
+        step("Catering", "cateringLink", "cateringturnoBB.aspx", parseCatering, function(v){ card.pax = v; }),
+        step("Technical", "steccaLink", "SteccaturnoBB.aspx", parseMel, function(v){ card.mel = v; }, key)
+      ]);
+    }, function(e){ out.errors.push("A flight page could not be read (" + e.message + ")."); }).then(function(){ return card; });
+  }
+  function pool(items, size, worker){
+    var i = 0, results = [];
+    function next(){
+      if(i >= items.length) return Promise.resolve();
+      var k = i++;
+      return worker(items[k], k).then(function(r){ results[k] = r; return next(); });
+    }
+    var runners = [];
+    for(var j = 0; j < Math.min(size, items.length); j++) runners.push(next());
+    return Promise.all(runners).then(function(){ return results; });
+  }
+  say("Collecting flight data...");
+  arm(TMO.base);
+  var path = location.pathname;
+  if(/detailturnobb/i.test(path)){
+    expected = 1; pagesTotal = 3;
+    loadFlight(location.href, document, 0).then(function(card){ out.day = card.flight ? card.flight.date : ""; finish(); });
+    return;
+  }
+  if(/bbacmdutyplan/i.test(path)){
+    var links = Array.prototype.slice.call(document.querySelectorAll("a[href]")).filter(function(a){ return /detailturnobb\.aspx/i.test(a.getAttribute("href")); });
+    var seen = {}, flights = [], dates = [];
+    links.forEach(function(a){
+      var href = a.getAttribute("href");
+      if(seen[href]) return;
+      seen[href] = true;
+      var u = new URL(href, location.href), date = u.searchParams.get("DataRif") || "";
+      var positioning = /(^|\s)mg(\s|$)/i.test(clean(a.textContent));
+      if(dates.indexOf(date) < 0) dates.push(date);
+      flights.push({url: u.href, date: date, positioning: positioning});
+    });
+    var cur = document.querySelector("tr.currentDay"), m = cur && cur.textContent.match(/\d{2}\/\d{2}\/\d{4}/);
+    var start = m ? dates.indexOf(m[0]) : 0; if(start < 0) start = 0;
+    var day = "", todo = [];
+    for(var di = start; di < dates.length && !todo.length; di++){
+      day = dates[di];
+      todo = flights.filter(function(f){ return f.date === day && !f.positioning; });
+    }
+    out.day = day;
+    if(!todo.length){ out.errors.push("No flights to brief were found on the duty plan."); finish(); return; }
+    expected = todo.length; pagesTotal = todo.length * 4;
+    arm(Math.max(TMO.base, todo.length * 4 * TMO.perPage));
+    pool(todo, 2, function(f, k){ return loadFlight(f.url, null, k); }).then(function(){ finish(); });
+    return;
+  }
+  if(/\/acmdutyplan\.aspx$/i.test(path) && document.getElementById("TurnoTable")){
+    TARGET = LB || BASE.replace(/[^\/]*#d=$/, "roster.html#d=");
+    out = {v: 3, kind: "roster", login: "", items: [], errors: []};
+    var lg = document.getElementById("lblLoginValue");
+    if(lg) out.login = clean(lg.textContent).replace(/^Login\s*:\s*/i, "");
+    var col = null, curDate = "", toLoad = [];
+    function tx(c){ return c ? clean(c.textContent) : ""; }
+    Array.prototype.slice.call(document.getElementById("TurnoTable").querySelectorAll("tr")).forEach(function(tr){
+      var cs = Array.prototype.slice.call(tr.children);
+      if(!col){
+        var names = cs.map(tx);
+        if(names.indexOf("Flight Number") >= 0){
+          col = {day: names.indexOf("Day"), num: names.indexOf("Flight Number"), meal: names.indexOf("Crew Meal"), mg: names.indexOf("Must Go"),
+            from: names.indexOf("From"), to: names.indexOf("To"), ds: names.indexOf("Duty Start"), de: names.indexOf("Duty End"), off: names.indexOf("Block Off"), on: names.indexOf("Block On")};
+        }
+        return;
+      }
+      if(cs.length < 12) return;
+      var dm = tx(cs[col.day]).match(/(\d{2})\/(\d{2})\/(\d{2})/);
+      if(dm) curDate = dm[1] + "/" + dm[2] + "/20" + dm[3];
+      var numTxt = tx(cs[col.num]);
+      if(!numTxt || !curDate) return;
+      var a = cs[col.num].querySelector("a"), oc = a ? (a.getAttribute("onclick") || "") : "";
+      var m = oc.match(/Vettore=([^&"']*)&(?:amp;)?Numero=([^&"']*)&(?:amp;)?APTPart=([^"'&]*)/), dd = oc.match(/DataRif=(\d{2}\/\d{2}\/\d{4})/);
+      if(m){
+        var carrier = clean(m[1]), isMg = /^mg$/i.test(tx(cs[col.mg])), isTr = carrier.toUpperCase() === "TR";
+        var it = {kind: "flight", date: dd ? dd[1] : curDate, carrier: carrier, numero: clean(m[2]), apt: clean(m[3]), number: numTxt,
+          from: tx(cs[col.from]), to: tx(cs[col.to]), off: tx(cs[col.off]), on: tx(cs[col.on]), ds: tx(cs[col.ds]), de: tx(cs[col.de]),
+          meal: /\(P\)/i.test(tx(cs[col.meal])), mg: isMg, tr: isTr, reg: "", type: "", crew: []};
+        out.items.push(it); if(!isMg && !isTr) toLoad.push(it);
+      } else if(numTxt === "O" || numTxt === "!!!"){
+        out.items.push({kind: "off", date: curDate, code: numTxt});
+      } else if(/^[A-Za-z]/.test(numTxt)){
+        out.items.push({kind: "other", date: curDate, code: numTxt, start: tx(cs[col.off]) || tx(cs[col.ds]), end: tx(cs[col.on]), ds: tx(cs[col.ds]), de: tx(cs[col.de])});
+      }
+    });
+    if(!col){ out.errors.push("I could not find the roster table on this page."); finish(); return; }
+    var count = 0, detailBase = new URL("DetailTurnoBB.aspx", location.href).href;
+    arm(Math.min(900000, Math.max(TMO.base, toLoad.length * 2 * TMO.perPage)));
+    pool(toLoad, 3, function(it){
+      var q = detailBase + "?DataRif=" + encodeURIComponent(it.date) + "&Vettore=" + encodeURIComponent(it.carrier) + "&Numero=" + encodeURIComponent(it.numero) + "&APTPart=" + encodeURIComponent(it.apt);
+      return getDoc(q).then(function(doc){
+        it.reg = txt(doc, "#lblAC"); it.type = txt(doc, "#lblOPSACType");
+        if(!out.login) out.login = txt(doc, "#lblLogin");
+        return getDoc(tabHref(doc, q, "crewLink", "crewturnoBB.aspx")).then(function(d2){ it.crew = parseCrew(d2); });
+      }).catch(function(e){ out.errors.push(it.date + " " + it.number + ": " + e.message); })
+        .then(function(){ count++; say("Collected flight " + count + " of " + toLoad.length + "..."); });
+    }).then(function(){ finish(); });
+    return;
+  }
+  out.errors.push("Open the duty plan, a flight's Details page or the monthly roster first, then tap the bookmark again.");
+  finish();
+}
+function bookmarkletCode(){
+  var field = document.getElementById("target");
+  var base = ((field && field.value.trim()) || new URL("briefing.html", location.href).href).split("#")[0] + "#d=";
+  var lb = base.replace(/[^\/]*#d=$/, "roster.html#d=");
+  return "javascript:" + encodeURIComponent("void((" + collect.toString() + ")(" + JSON.stringify(base) + ",void 0," + JSON.stringify(lb) + "))");
+}
+(function(){
+  var code = document.getElementById("code"), msg = document.getElementById("msg");
+  var target = document.getElementById("target"), tmsg = document.getElementById("tmsg"), tlink = document.getElementById("testlink");
+  function refresh(){ code.value = bookmarkletCode(); tlink.href = target.value.trim() || "#"; }
+  var dir = location.href.split("#")[0].split("?")[0].replace(/[^\/]*$/, "");
+  var names = ["briefing.html", "FlightBriefing.html", "flightbriefing.html", "Briefing.html", "flight-briefing.html"];
+  target.value = dir + names[0];
+  refresh();
+  target.addEventListener("input", function(){ tmsg.textContent = ""; refresh(); });
+  (function findPage(list){
+    if(typeof fetch !== "function") return;
+    var n = list.shift();
+    if(!n){ tmsg.textContent = "I could not find your briefing page next to this file. Type its exact address above, then use Open it to test."; return; }
+    fetch(dir + n, {method: "HEAD", cache: "no-cache"}).then(function(r){
+      if(r.ok){ target.value = dir + n; tmsg.textContent = "Found your briefing page: " + n; refresh(); } else findPage(list);
+    }).catch(function(){ findPage(list); });
+  })(names.slice());
+  document.getElementById("copy").addEventListener("click", function(){
+    function ok(){ msg.textContent = "Copied. Now follow step 2 and step 3."; }
+    function fallback(){ code.focus(); code.select(); code.setSelectionRange(0, code.value.length); try{ document.execCommand("copy"); ok(); }catch(e){ msg.textContent = "Tap the box, choose Select All, then Copy."; } }
+    if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code.value).then(ok, fallback); else fallback();
+  });
+  (function findPhoto(list){
+    var n = list.shift(); if(!n) return;
+    var im = new Image();
+    im.onload = function(){ document.body.style.setProperty("--photo", 'url("' + n + '")'); document.body.classList.add("photo"); };
+    im.onerror = function(){ findPhoto(list); };
+    im.src = n;
+  })(["background.jpg","background.jpeg","background.png","background.webp","Background.jpg","background.JPG","background.JPEG","background.PNG"]);
+})();
+window.__collect = collect; window.__bookmarkletCode = bookmarkletCode;
+</script>
+<script src="menu.js"></script>
+</body>
+</html>
