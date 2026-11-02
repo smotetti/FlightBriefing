@@ -98,11 +98,21 @@ function collect(BASE, go, LB){
     }
     return issues;
   }
-  function getDoc(url){
-    return fetch(url, {credentials: "include"}).then(function(r){
+  var TMO = (typeof window !== "undefined" && window.__tmo) || {req: 30000, base: 120000, perPage: 10000};
+  function getOnce(url){
+    var ctl = (typeof AbortController === "function") ? new AbortController() : null, timer = null;
+    var req = fetch(url, ctl ? {credentials: "include", signal: ctl.signal} : {credentials: "include"}).then(function(r){
       if(!r.ok) throw new Error("HTTP " + r.status);
       return r.text();
     }).then(function(t){ return new DOMParser().parseFromString(t, "text/html"); });
+    var lim = new Promise(function(resolve, reject){ timer = setTimeout(function(){ try{ if(ctl) ctl.abort(); }catch(e){} reject(new Error("took too long")); }, TMO.req); });
+    return Promise.race([req, lim]).then(function(v){ clearTimeout(timer); return v; }, function(e){ clearTimeout(timer); throw e; });
+  }
+  function getDoc(url){
+    return getOnce(url).catch(function(e){
+      if(/^HTTP 4/.test(e.message)) throw e;
+      return getOnce(url);
+    });
   }
   function tabHref(doc, baseUrl, id, pageName){
     var a = doc.getElementById(id), h = a && a.getAttribute("href");
@@ -123,9 +133,24 @@ function collect(BASE, go, LB){
       banner.textContent = t;
     }catch(e){}
   }
-  var out = {v: 2, day: "", flights: [], errors: []}, done = false, TARGET = BASE;
+  var out = {v: 2, day: "", flights: [], errors: []}, done = false, TARGET = BASE, expected = 0, pagesDone = 0, pagesTotal = 0, melCache = {}, limit = null;
+  function tick(){ pagesDone++; if(pagesTotal) say("Loaded " + pagesDone + " of " + pagesTotal + " pages..."); }
+  function arm(ms){
+    if(limit) clearTimeout(limit);
+    limit = setTimeout(function(){
+      out.errors.push("Some pages took too long to load.");
+      if(expected > out.flights.length) out.errors.push((expected - out.flights.length) + " flight(s) could not be loaded at all.");
+      finish();
+    }, ms);
+  }
   function finish(){
     if(done) return; done = true;
+    if(limit) clearTimeout(limit);
+    if(out.flights){
+      out.flights.forEach(function(c){ if(c && c.pending > 0) c.errors.push("Some pages of this flight did not finish loading."); if(c) delete c.pending; });
+      out.flights.sort(function(a, b){ return (a.i === undefined ? 9999 : a.i) - (b.i === undefined ? 9999 : b.i); });
+      out.flights.forEach(function(c){ delete c.i; });
+    }
     var u = TARGET + encode(out);
     say("Opening the briefing...");
     go(u);
@@ -139,22 +164,29 @@ function collect(BASE, go, LB){
       }catch(e){}
     }, 4000);
   }
-  function loadFlight(url, doc0){
-    var card = {flight: null, crew: [], pax: {business: 0, economy: 0}, mel: [], errors: []};
+  function loadFlight(url, doc0, idx){
+    var card = {flight: null, crew: [], pax: {business: 0, economy: 0}, mel: [], errors: [], pending: 0, i: idx};
     var p0 = doc0 ? Promise.resolve(doc0) : getDoc(url);
     return p0.then(function(doc){
       card.flight = parseDetails(doc);
       card.flight.date = new URL(url).searchParams.get("DataRif") || "";
-      function step(label, id, page, parse, assign){
-        return getDoc(tabHref(doc, url, id, page)).then(function(d){ assign(parse(d)); })
-          .catch(function(e){ card.errors.push(label + " page could not be read (" + e.message + ")."); });
+      card.pending = 3;
+      out.flights.push(card);
+      if(!doc0) tick();
+      function step(label, id, page, parse, assign, cacheKey){
+        var run = function(){ return getDoc(tabHref(doc, url, id, page)).then(parse); };
+        var p = cacheKey ? (melCache[cacheKey] || (melCache[cacheKey] = run())) : run();
+        return p.then(function(v){ assign(v); })
+          .catch(function(e){ card.errors.push(label + " page could not be read (" + e.message + ")."); })
+          .then(function(){ card.pending--; tick(); });
       }
+      var key = card.flight.registration ? card.flight.registration + "|" + card.flight.date : "";
       return Promise.all([
         step("Crew", "crewLink", "crewturnoBB.aspx", parseCrew, function(v){ card.crew = v; }),
         step("Catering", "cateringLink", "cateringturnoBB.aspx", parseCatering, function(v){ card.pax = v; }),
-        step("Technical", "steccaLink", "SteccaturnoBB.aspx", parseMel, function(v){ card.mel = v; })
+        step("Technical", "steccaLink", "SteccaturnoBB.aspx", parseMel, function(v){ card.mel = v; }, key)
       ]);
-    }, function(e){ card.errors.push("Flight page could not be read (" + e.message + ")."); }).then(function(){ return card; });
+    }, function(e){ out.errors.push("A flight page could not be read (" + e.message + ")."); }).then(function(){ return card; });
   }
   function pool(items, size, worker){
     var i = 0, results = [];
@@ -168,10 +200,11 @@ function collect(BASE, go, LB){
     return Promise.all(runners).then(function(){ return results; });
   }
   say("Collecting flight data...");
-  setTimeout(function(){ out.errors.push("Some pages took too long to load."); finish(); }, 90000);
+  arm(TMO.base);
   var path = location.pathname;
   if(/detailturnobb/i.test(path)){
-    loadFlight(location.href, document).then(function(card){ out.flights.push(card); out.day = card.flight ? card.flight.date : ""; finish(); });
+    expected = 1; pagesTotal = 3;
+    loadFlight(location.href, document, 0).then(function(card){ out.day = card.flight ? card.flight.date : ""; finish(); });
     return;
   }
   if(/bbacmdutyplan/i.test(path)){
@@ -195,10 +228,9 @@ function collect(BASE, go, LB){
     }
     out.day = day;
     if(!todo.length){ out.errors.push("No flights to brief were found on the duty plan."); finish(); return; }
-    var count = 0;
-    pool(todo, 2, function(f){
-      return loadFlight(f.url, null).then(function(card){ count++; say("Collected flight " + count + " of " + todo.length + "..."); return card; });
-    }).then(function(cards){ out.flights = cards; finish(); });
+    expected = todo.length; pagesTotal = todo.length * 4;
+    arm(Math.max(TMO.base, todo.length * 4 * TMO.perPage));
+    pool(todo, 2, function(f, k){ return loadFlight(f.url, null, k); }).then(function(){ finish(); });
     return;
   }
   if(/\/acmdutyplan\.aspx$/i.test(path) && document.getElementById("TurnoTable")){
@@ -239,6 +271,7 @@ function collect(BASE, go, LB){
     });
     if(!col){ out.errors.push("I could not find the roster table on this page."); finish(); return; }
     var count = 0, detailBase = new URL("DetailTurnoBB.aspx", location.href).href;
+    arm(Math.min(900000, Math.max(TMO.base, toLoad.length * 2 * TMO.perPage)));
     pool(toLoad, 3, function(it){
       var q = detailBase + "?DataRif=" + encodeURIComponent(it.date) + "&Vettore=" + encodeURIComponent(it.carrier) + "&Numero=" + encodeURIComponent(it.numero) + "&APTPart=" + encodeURIComponent(it.apt);
       return getDoc(q).then(function(doc){
