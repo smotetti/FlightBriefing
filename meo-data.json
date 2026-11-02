@@ -1,7 +1,142 @@
 {
-  "updated": "2026-10-16",
-  "airports": [
-    { "icao": "LIPE", "iata": "BLQ", "name": "Bologna", "runways": [ { "id": "12" }, { "id": "30" } ] },
-    { "icao": "LIRQ", "iata": "FLR", "name": "Florence", "runways": [ { "id": "05" }, { "id": "23" } ] }
-  ]
+ "updated": "2026-10-31",
+ "airports": [
+  {
+   "icao": "LIPE",
+   "iata": "BLQ",
+   "name": "Bologna",
+   "runways": [
+    {
+     "id": "12"
+    },
+    {
+     "id": "30"
+    }
+   ]
+  },
+  {
+   "icao": "LIRQ",
+   "iata": "FLR",
+   "name": "Florence",
+   "runways": [
+    {
+     "id": "05"
+    },
+    {
+     "id": "23"
+    }
+   ]
+  },
+  {
+   "icao": "EDDF",
+   "iata": "FRA",
+   "name": "Frankfurt",
+   "runways": [
+    {
+     "id": "07C"
+    },
+    {
+     "id": "07L"
+    },
+    {
+     "id": "07R"
+    },
+    {
+     "id": "18"
+    },
+    {
+     "id": "25C"
+    },
+    {
+     "id": "25L"
+    },
+    {
+     "id": "25R"
+    }
+   ]
+  },
+  {
+   "icao": "LSZH",
+   "iata": "ZRH",
+   "name": "Zurich",
+   "runways": [
+    {
+     "id": "10"
+    },
+    {
+     "id": "14"
+    },
+    {
+     "id": "16"
+    },
+    {
+     "id": "28"
+    },
+    {
+     "id": "32"
+    },
+    {
+     "id": "34"
+    }
+   ]
+  },
+  {
+   "icao": "EPWR",
+   "iata": "WRO",
+   "name": "Wroclaw",
+   "runways": [
+    {
+     "id": "11"
+    },
+    {
+     "id": "29"
+    }
+   ]
+  },
+  {
+   "icao": "LIML",
+   "iata": "LIN",
+   "name": "Milan Linate",
+   "runways": [
+    {
+     "id": "18"
+    },
+    {
+     "id": "36"
+    }
+   ]
+  },
+  {
+   "icao": "LFSB",
+   "iata": "BSL",
+   "name": "Basel-Mulhouse",
+   "runways": [
+    {
+     "id": "07"
+    },
+    {
+     "id": "15"
+    },
+    {
+     "id": "25"
+    },
+    {
+     "id": "33"
+    }
+   ]
+  },
+  {
+   "icao": "LSGG",
+   "iata": "GVA",
+   "name": "Geneva",
+   "runways": [
+    {
+     "id": "04"
+    },
+    {
+     "id": "22"
+    }
+   ]
+  }
+ ]
 }
