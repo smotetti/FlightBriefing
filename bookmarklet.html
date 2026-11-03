@@ -98,7 +98,7 @@ function collect(BASE, go, LB){
     }
     return issues;
   }
-  var TMO = (typeof window !== "undefined" && window.__tmo) || {req: 30000, base: 120000, perPage: 10000};
+  var TMO = (typeof window !== "undefined" && window.__tmo) || {req: 30000, base: 120000, perPage: 10000, tap: 12000};
   function getOnce(url){
     var ctl = (typeof AbortController === "function") ? new AbortController() : null, timer = null;
     var req = fetch(url, ctl ? {credentials: "include", signal: ctl.signal} : {credentials: "include"}).then(function(r){
@@ -134,7 +134,8 @@ function collect(BASE, go, LB){
     }catch(e){}
   }
   var out = {v: 2, day: "", flights: [], errors: []}, done = false, TARGET = BASE, expected = 0, pagesDone = 0, pagesTotal = 0, melCache = {}, limit = null;
-  function tick(){ pagesDone++; if(pagesTotal) say("Loaded " + pagesDone + " of " + pagesTotal + " pages..."); }
+  var flightsDone = 0;
+  function tick(){ pagesDone++; }
   function arm(ms){
     if(limit) clearTimeout(limit);
     limit = setTimeout(function(){
@@ -151,9 +152,14 @@ function collect(BASE, go, LB){
       out.flights.sort(function(a, b){ return (a.i === undefined ? 9999 : a.i) - (b.i === undefined ? 9999 : b.i); });
       out.flights.forEach(function(c){ delete c.i; });
     }
-    var u = TARGET + encode(out);
+    var u = TARGET + encode(out), ok = true;
+    try{ new URL(u); }catch(e){ ok = false; }
+    if(!ok){ say("The address for the briefing page is not valid: " + TARGET.slice(0, 90)); return; }
     say("Opening the briefing...");
     go(u);
+    setTimeout(function(){
+      try{ var l = document.createElement("a"); l.href = u; l.style.display = "none"; document.body.appendChild(l); l.click(); }catch(e){}
+    }, 1500);
     setTimeout(function(){
       try{
         banner.textContent = "";
@@ -161,8 +167,12 @@ function collect(BASE, go, LB){
         a.href = u; a.textContent = "Tap here to open the briefing";
         a.style.cssText = "color:#fff;text-decoration:underline";
         banner.appendChild(a);
+        var n = document.createElement("div");
+        n.style.cssText = "font-size:13px;font-weight:400;margin-top:6px;word-break:break-all";
+        n.textContent = u.length + " characters, " + u.slice(0, 70);
+        banner.appendChild(n);
       }catch(e){}
-    }, 4000);
+    }, TMO.tap);
   }
   function loadFlight(url, doc0, idx){
     var card = {flight: null, crew: [], pax: {business: 0, economy: 0}, mel: [], errors: [], pending: 0, i: idx};
@@ -178,13 +188,13 @@ function collect(BASE, go, LB){
         var p = cacheKey ? (melCache[cacheKey] || (melCache[cacheKey] = run())) : run();
         return p.then(function(v){ assign(v); })
           .catch(function(e){ card.errors.push(label + " page could not be read (" + e.message + ")."); })
-          .then(function(){ card.pending--; tick(); });
+          .then(function(){ card.pending--; tick(); if(card.pending === 0){ flightsDone++; say("Collected flight " + flightsDone + " of " + expected + "..."); } });
       }
       var key = card.flight.registration ? card.flight.registration + "|" + card.flight.date : "";
       return Promise.all([
         step("Crew", "crewLink", "crewturnoBB.aspx", parseCrew, function(v){ card.crew = v; }),
         step("Catering", "cateringLink", "cateringturnoBB.aspx", parseCatering, function(v){ card.pax = v; }),
-        step("Technical", "steccaLink", "SteccaturnoBB.aspx", parseMel, function(v){ card.mel = v; }, key)
+        step("Technical", "steccaLink", "SteccaturnoBB.aspx", parseMel, function(v){ card.mel = v.map(function(m){ return {description: m.description, ref: m.ref}; }); }, key)
       ]);
     }, function(e){ out.errors.push("A flight page could not be read (" + e.message + ")."); }).then(function(){ return card; });
   }
