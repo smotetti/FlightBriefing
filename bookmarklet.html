@@ -98,6 +98,25 @@ function collect(BASE, go, LB){
     }
     return issues;
   }
+  function legFrom(a, t){
+    var h = a.getAttribute("href") || "", p = h.match(/DataRif=([^&]*)&(?:amp;)?Vettore=([^&]*)&(?:amp;)?Numero=([^&]*)&(?:amp;)?APTPart=(.*)$/);
+    var m = t.match(/^(\S+\s*\d+)\s+([A-Z]{3})\s*-\s*([A-Z]{3})\s+ETD:\s*(\d\d:\d\d)\s+ETA:\s*(\d\d:\d\d)/);
+    if(!p || !m) return null;
+    var off = t.match(/Bl\. Off:\s*(\d\d:\d\d)/), on = t.match(/Bl\. On:\s*(\d\d:\d\d)/);
+    return {number: m[1].replace(/^([A-Z0-9]{2})\s*/, "$1 "), carrier: decodeURIComponent(p[2]).trim(), numero: decodeURIComponent(p[3]).trim(), apt: decodeURIComponent(p[4]).trim().split("&")[0].trim(),
+      date: decodeURIComponent(p[1]).trim(), from: m[2], to: m[3], etd: m[4], eta: m[5], off: off ? off[1] : "", on: on ? on[1] : ""};
+  }
+  function parseRotation(doc){
+    var legs = [], seen = {}, vt = doc.querySelector("#VoliTable"), hd = vt ? vt.textContent.replace(/\s+/g, " ").match(/(\d{2}\/\d{2}\/\d{2,4})\s*-\s*([A-Z0-9]{4,6})/) : null;
+    Array.prototype.slice.call(doc.querySelectorAll("a[href]")).forEach(function(a){
+      var h = a.getAttribute("href") || "";
+      if(!/detailturnobb\.aspx/i.test(h) || seen[h]) return;
+      seen[h] = true;
+      var t = clean(a.textContent); if(!/ETD/.test(t)){ var tr = a.closest("tr"); if(tr) t = clean(tr.textContent); }
+      var l = legFrom(a, t); if(l) legs.push(l);
+    });
+    return {reg: hd ? hd[2] : "", legs: legs};
+  }
   var TMO = (typeof window !== "undefined" && window.__tmo) || {req: 30000, base: 120000, perPage: 10000, tap: 12000};
   function getOnce(url){
     var ctl = (typeof AbortController === "function") ? new AbortController() : null, timer = null;
@@ -133,7 +152,7 @@ function collect(BASE, go, LB){
       banner.textContent = t;
     }catch(e){}
   }
-  var out = {v: 2, day: "", flights: [], errors: []}, done = false, TARGET = BASE, expected = 0, pagesDone = 0, pagesTotal = 0, melCache = {}, limit = null;
+  var out = {v: 2, day: "", flights: [], rotations: {}, crews: {}, errors: []}, done = false, TARGET = BASE, expected = 0, pagesDone = 0, pagesTotal = 0, melCache = {}, limit = null;
   var flightsDone = 0;
   function tick(){ pagesDone++; }
   function arm(ms){
@@ -194,9 +213,37 @@ function collect(BASE, go, LB){
       return Promise.all([
         step("Crew", "crewLink", "crewturnoBB.aspx", parseCrew, function(v){ card.crew = v; }),
         step("Catering", "cateringLink", "cateringturnoBB.aspx", parseCatering, function(v){ card.pax = v; }),
-        step("Technical", "steccaLink", "SteccaturnoBB.aspx", parseMel, function(v){ card.mel = v.map(function(m){ return {description: m.description, ref: m.ref}; }); }, key)
+        step("Technical", "steccaLink", "SteccaturnoBB.aspx", function(d){ return {mel: parseMel(d), rot: parseRotation(d)}; }, function(v){
+          card.mel = v.mel.map(function(m){ return {description: m.description, ref: m.ref}; });
+          if(key && v.rot.legs.length) out.rotations[key] = v.rot;
+        }, key)
       ]);
     }, function(e){ out.errors.push("A flight page could not be read (" + e.message + ")."); }).then(function(){ return card; });
+  }
+  function norm(n){ return String(n || "").replace(/\s+/g, "").toUpperCase(); }
+  function neighbours(){
+    var mine = {}, want = [], have = {};
+    out.flights.forEach(function(c){ if(c.flight) mine[norm(c.flight.number) + "|" + c.flight.date] = true; });
+    out.flights.forEach(function(c){
+      if(!c.flight) return;
+      var rot = out.rotations[c.flight.registration + "|" + c.flight.date]; if(!rot) return;
+      var idx = -1; rot.legs.forEach(function(l, i){ if(norm(l.number) === norm(c.flight.number)) idx = i; });
+      if(idx < 0) return;
+      [rot.legs[idx - 1], rot.legs[idx + 1]].forEach(function(l){
+        if(!l) return; var k = l.number + "|" + l.date;
+        if(mine[norm(l.number) + "|" + l.date] || have[k]) return;
+        have[k] = true; want.push(l);
+      });
+    });
+    if(!want.length) return Promise.resolve();
+    say("Collecting the crews of the previous and next flights...");
+    arm(Math.max(TMO.base, (expected * 4 + want.length) * TMO.perPage));
+    var crewBase = new URL("crewturnoBB.aspx", location.href).href;
+    return pool(want, 2, function(l){
+      var q = crewBase + "?DataRif=" + encodeURIComponent(l.date) + "&Vettore=" + encodeURIComponent(l.carrier) + "&Numero=" + encodeURIComponent(l.numero) + "&APTPart=" + encodeURIComponent(l.apt);
+      return getDoc(q).then(function(d){ out.crews[l.number + "|" + l.date] = parseCrew(d); })
+        .catch(function(e){ out.errors.push("Crew of " + l.number + " could not be read (" + e.message + ")."); });
+    });
   }
   function pool(items, size, worker){
     var i = 0, results = [];
@@ -214,7 +261,7 @@ function collect(BASE, go, LB){
   var path = location.pathname;
   if(/detailturnobb/i.test(path)){
     expected = 1; pagesTotal = 3;
-    loadFlight(location.href, document, 0).then(function(card){ out.day = card.flight ? card.flight.date : ""; finish(); });
+    loadFlight(location.href, document, 0).then(function(card){ out.day = card.flight ? card.flight.date : ""; return neighbours(); }).then(function(){ finish(); });
     return;
   }
   if(/bbacmdutyplan/i.test(path)){
@@ -240,7 +287,7 @@ function collect(BASE, go, LB){
     if(!todo.length){ out.errors.push("No flights to brief were found on the duty plan."); finish(); return; }
     expected = todo.length; pagesTotal = todo.length * 4;
     arm(Math.max(TMO.base, todo.length * 4 * TMO.perPage));
-    pool(todo, 2, function(f, k){ return loadFlight(f.url, null, k); }).then(function(){ finish(); });
+    pool(todo, 2, function(f, k){ return loadFlight(f.url, null, k); }).then(function(){ return neighbours(); }).then(function(){ finish(); });
     return;
   }
   if(/\/acmdutyplan\.aspx$/i.test(path) && document.getElementById("TurnoTable")){
