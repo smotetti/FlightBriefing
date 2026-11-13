@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Company notices</title>
+<style>
+:root{--bar:#b4c3c9;--paper:#e8edef;--panel:rgba(255,255,255,.95);--ink:#12232b;--muted:#566a72;--line:#c6d2d6;--teal:#0e7a7a;--on-teal:#fff;--warn:#a64a00;
+  --body:"Avenir Next",-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif}
+@media (prefers-color-scheme:dark){:root{--paper:#0d1619;--panel:rgba(22,37,43,.94);--ink:#e5eef0;--muted:#8ea4ac;--line:#2a3e46;--teal:#38b6b6;--on-teal:#04181a;--warn:#eb9a55}}
+*{box-sizing:border-box}[hidden]{display:none !important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.45 var(--body);
+  padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+.photo::before{content:"";position:fixed;inset:0;z-index:-1;background:linear-gradient(rgba(8,18,22,.28),rgba(8,18,22,.5)),var(--photo) center/cover no-repeat}
+main,.top{max-width:900px;margin:0 auto}
+.top{margin-bottom:16px;display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px;background:var(--bar);color:#12232b;border-radius:14px;padding:14px 22px}
+.top img{display:block;height:64px;width:auto;max-width:60%}.top h1{margin:0;font-size:22px;font-weight:650}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+h2{margin:0 0 10px;font-size:19px}
+label{display:block;margin:12px 0 4px;font-weight:600}
+input,textarea{width:100%;font:inherit;font-size:17px;color:var(--ink);background:var(--paper);border:1.5px solid var(--line);border-radius:10px;padding:10px 12px}
+input{min-height:50px}textarea{min-height:130px}
+.two{display:grid;gap:12px;grid-template-columns:1fr 1fr}
+.btn{font:inherit;color:var(--ink);background:var(--paper);border:1.5px solid var(--line);border-radius:12px;cursor:pointer;min-height:52px;padding:0 18px;font-size:18px}
+.btn.primary{background:var(--teal);border-color:var(--teal);color:var(--on-teal);font-weight:650}
+.btn.small{min-height:44px;font-size:16px}
+.row2{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;align-items:center}
+.hint{color:var(--muted);font-size:15px;margin:6px 0 0}.err{color:var(--warn);font-weight:600}
+.note{border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:var(--paper)}
+.note pre{white-space:pre-wrap;font:16px/1.5 var(--body);margin:6px 0 0}
+.sub{color:var(--muted);font-size:15px}
+a.btn{display:inline-flex;align-items:center;text-decoration:none}
+:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+</style>
+</head>
+<body>
+<header class="top"><img id="logo" src="logo.png" alt="Air Dolomiti" onerror="this.hidden=true"><h1>Company notices</h1></header>
+<main id="app"></main>
+<script>
+"use strict";
+var NKEY = "notices.v1", N = [], EDIT = null, MSG = "", FILTER = "";
+function esc(s){ return String(s == null ? "" : s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+function load(){ try{ var t = localStorage.getItem(NKEY); N = t ? JSON.parse(t) : []; }catch(e){ N = []; } if(!Array.isArray(N)) N = []; }
+function save(){ try{ localStorage.setItem(NKEY, JSON.stringify(N)); }catch(e){ MSG = "This browser could not save the notices."; } }
+function codes(s){ return String(s || "").split(/[\s,;]+/).map(function(x){ return x.trim().toUpperCase(); }).filter(Boolean); }
+function render(){
+  var app = document.getElementById("app"), e = EDIT !== null ? N.filter(function(n){ return n.id === EDIT; })[0] : null, f = FILTER.toUpperCase();
+  var h = '<div class="panel"><h2>' + (e ? 'Edit notice' : 'New notice') + '</h2>' +
+    '<label for="f-ap">Airports (IATA or ICAO codes, separated by commas)</label><input id="f-ap" autocapitalize="characters" autocorrect="off" placeholder="FRA, ZRH" value="' + esc(e ? e.airports.join(", ") : "") + '">' +
+    '<label for="f-ti">Title</label><input id="f-ti" value="' + esc(e ? e.title : "") + '">' +
+    '<label for="f-tx">Text</label><textarea id="f-tx">' + esc(e ? e.text : "") + '</textarea>' +
+    '<div class="two"><div><label for="f-fr">Valid from (optional)</label><input id="f-fr" type="date" value="' + esc(e ? e.from || "" : "") + '"></div><div><label for="f-to">Valid until (optional)</label><input id="f-to" type="date" value="' + esc(e ? e.to || "" : "") + '"></div></div>' +
+    '<label for="f-so">Source or reference (optional)</label><input id="f-so" placeholder="OPS circular number, e-mail date" value="' + esc(e ? e.source || "" : "") + '">' +
+    '<div class="row2"><button class="btn primary" type="button" id="save">' + (e ? 'Save changes' : 'Add notice') + '</button>' + (e ? '<button class="btn" type="button" id="cancel">Cancel</button>' : '') + '</div>' +
+    (MSG ? '<p class="' + (/could not|Please/.test(MSG) ? 'err' : 'hint') + '" style="margin:10px 0 0">' + esc(MSG) + '</p>' : '') + '</div>';
+  var list = N.filter(function(n){ return !f || n.airports.some(function(a){ return a.indexOf(f) >= 0; }); });
+  h += '<div class="panel"><h2>All notices (' + N.length + ')</h2><label for="flt">Show only airport</label><input id="flt" autocapitalize="characters" placeholder="FRA" value="' + esc(FILTER) + '">';
+  h += list.length ? list.map(function(n){
+    return '<div class="note" style="margin-top:12px"><b>' + esc(n.title) + '</b><br><span class="sub">' + esc(n.airports.join(", ")) + (n.from || n.to ? ', valid ' + esc(n.from || "...") + ' to ' + esc(n.to || "...") : ', no end date') + (n.source ? ', ' + esc(n.source) : '') + '</span><pre>' + esc(n.text) + '</pre>' +
+      '<div class="row2"><button class="btn small" type="button" data-edit="' + n.id + '">Edit</button><button class="btn small" type="button" data-del="' + n.id + '">Delete</button></div></div>';
+  }).join("") : '<p class="hint">No notices yet.</p>';
+  h += '</div><div class="panel"><h2>Backup</h2><p class="hint" style="margin:0 0 8px">Notices are kept on this iPad only. Copy this text to keep a backup, or paste a backup here and tap Import.</p><textarea id="bk">' + esc(JSON.stringify(N, null, 1)) + '</textarea><div class="row2"><button class="btn" type="button" id="imp">Import</button><a class="btn" href="daybrief.html">Back to the daily briefing</a></div></div>';
+  app.innerHTML = h;
+}
+document.addEventListener("click", function(ev){
+  var t = ev.target.closest("button"); if(!t) return;
+  if(t.id === "save"){
+    var ap = codes(document.getElementById("f-ap").value), ti = document.getElementById("f-ti").value.trim(), tx = document.getElementById("f-tx").value.trim();
+    if(!ap.length || !ti || !tx){ MSG = "Please fill in the airports, the title and the text."; render(); return; }
+    var o = {airports: ap, title: ti, text: tx, from: document.getElementById("f-fr").value, to: document.getElementById("f-to").value, source: document.getElementById("f-so").value.trim()};
+    if(o.from && o.to && o.to < o.from){ MSG = "Please check the dates: the end is before the start."; render(); return; }
+    if(EDIT !== null){ N = N.map(function(n){ return n.id === EDIT ? Object.assign({id: EDIT}, o) : n; }); MSG = "Changes saved."; EDIT = null; }
+    else { var id = N.reduce(function(m, n){ return Math.max(m, n.id); }, 0) + 1; N.push(Object.assign({id: id}, o)); MSG = "Notice added."; }
+    save(); render(); return;
+  }
+  if(t.id === "cancel"){ EDIT = null; MSG = ""; render(); return; }
+  if(t.dataset.edit){ EDIT = +t.dataset.edit; MSG = ""; render(); window.scrollTo(0, 0); return; }
+  if(t.dataset.del){ if(window.confirm("Delete this notice?")){ N = N.filter(function(n){ return n.id !== +t.dataset.del; }); save(); render(); } return; }
+  if(t.id === "imp"){
+    try{
+      var j = JSON.parse(document.getElementById("bk").value);
+      if(!Array.isArray(j)) throw new Error("not a list");
+      N = j.filter(function(n){ return n && Array.isArray(n.airports) && n.title; }).map(function(n, i){ return {id: i + 1, airports: n.airports.map(function(a){ return String(a).toUpperCase(); }), title: String(n.title), text: String(n.text || ""), from: n.from || "", to: n.to || "", source: n.source || ""}; });
+      save(); MSG = "Imported " + N.length + " notices."; render();
+    }catch(x){ MSG = "That text could not be read as a backup."; render(); }
+  }
+});
+document.addEventListener("input", function(ev){ if(ev.target.id === "flt"){ FILTER = ev.target.value; var p = ev.target.selectionStart; render(); var i = document.getElementById("flt"); if(i){ i.focus(); i.setSelectionRange(p, p); } } });
+(function init(){
+  (function findPhoto(list){
+    var n = list.shift(); if(!n) return;
+    var im = new Image();
+    im.onload = function(){ document.body.style.setProperty("--photo", 'url("' + n + '")'); document.body.classList.add("photo"); };
+    im.onerror = function(){ findPhoto(list); };
+    im.src = n;
+  })(["background.jpg","background.jpeg","background.png","background.webp","Background.jpg","background.JPG","background.JPEG","background.PNG"]);
+  load(); render();
+})();
+</script>
+<script src="menu.js"></script>
+</body>
+</html>

@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Daily briefing</title>
+<style>
+:root{--bar:#b4c3c9;--paper:#e8edef;--panel:rgba(255,255,255,.95);--ink:#12232b;--muted:#566a72;--line:#c6d2d6;--teal:#0e7a7a;--on-teal:#fff;--warn:#a64a00;
+  --red-bg:#f6c9c5;--red-ink:#5c0f0a;--red-line:#c0392b;--yel-bg:#fbe8a6;--yel-ink:#5a4400;--yel-line:#c99a00;--grn-bg:#c9e8c9;--grn-ink:#0f3d14;--grn-line:#2f8f3f;
+  --body:"Avenir Next",-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif}
+@media (prefers-color-scheme:dark){:root{--paper:#0d1619;--panel:rgba(22,37,43,.94);--ink:#e5eef0;--muted:#8ea4ac;--line:#2a3e46;--teal:#38b6b6;--on-teal:#04181a;--warn:#eb9a55;
+  --red-bg:#5c1f1b;--red-ink:#ffd9d6;--yel-bg:#574613;--yel-ink:#ffeeb0;--grn-bg:#1d4a25;--grn-ink:#d3f3d6}}
+*{box-sizing:border-box}[hidden]{display:none !important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.45 var(--body);
+  padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+.photo::before{content:"";position:fixed;inset:0;z-index:-1;background:linear-gradient(rgba(8,18,22,.28),rgba(8,18,22,.5)),var(--photo) center/cover no-repeat}
+main,.top{max-width:1130px;margin:0 auto}
+.top{margin-bottom:16px;display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px;background:var(--bar);color:#12232b;border-radius:14px;padding:14px 22px}
+.top img{display:block;height:64px;width:auto;max-width:60%}.top h1{margin:0;font-size:22px;font-weight:650}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+h2{margin:0 0 10px;font-size:19px}h3{margin:14px 0 6px;font-size:16px}
+.hint{color:var(--muted);font-size:15px;margin:6px 0 0}.err{color:var(--warn);font-weight:600}
+.btn,.chip{font:inherit;color:var(--ink);background:var(--paper);border:1.5px solid var(--line);border-radius:12px;cursor:pointer}
+.btn{min-height:52px;padding:0 18px;font-size:18px}.btn.small{min-height:44px;font-size:16px}
+a.btn{display:inline-flex;align-items:center;text-decoration:none}
+.chips{display:flex;flex-wrap:wrap;gap:8px}.chip{min-height:48px;padding:0 14px;font-size:17px}
+.chip[aria-pressed=true]{background:var(--teal);border-color:var(--teal);color:var(--on-teal);font-weight:650}
+.row2{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;align-items:center}
+.num{font-variant-numeric:tabular-nums}
+.flight{border:1.5px solid var(--line);border-radius:12px;background:var(--paper);padding:12px 14px}
+.flight b.fn{font-size:21px}.sub{color:var(--muted);font-size:15px}
+.pill{display:inline-block;border-radius:8px;padding:2px 10px;font-weight:650;font-size:15px;border:1.5px solid transparent;margin-right:6px}
+.t-red{background:var(--red-bg);color:var(--red-ink);border-color:var(--red-line)}
+.t-yellow{background:var(--yel-bg);color:var(--yel-ink);border-color:var(--yel-line)}
+.t-green{background:var(--grn-bg);color:var(--grn-ink);border-color:var(--grn-line)}
+.t-note{background:var(--paper);color:var(--ink);border-color:var(--line)}
+.link{margin:8px 0;padding:10px 14px;border-radius:12px;border:1.5px solid var(--line)}
+.link ul{margin:6px 0 0;padding-left:20px}
+.alert{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line)}.alert:first-of-type{border-top:0}
+.cols{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.box{border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--paper)}
+pre{white-space:pre-wrap;word-break:break-word;font:14px/1.45 ui-monospace,Menlo,monospace;margin:6px 0 0}
+input[type=url],input[type=text]{width:100%;min-height:48px;font:inherit;font-size:16px;color:var(--ink);background:var(--paper);border:1.5px solid var(--line);border-radius:10px;padding:0 12px}
+img.sig{display:block;width:100%;height:auto;border-radius:10px;background:#fff;margin-top:10px}
+:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+</style>
+</head>
+<body>
+<header class="top"><img id="logo" src="logo.png" alt="Air Dolomiti" onerror="this.hidden=true"><h1>Daily briefing</h1></header>
+<main id="app"></main>
+<script>
+"use strict";
+var AIRPORTS = {"AHO":{"icao":"LIEA","name":"Alghero"},"AMS":{"icao":"EHAM","name":"Amsterdam"},"AOI":{"icao":"LIPY","name":"Ancona"},"ARN":{"icao":"ESSA","name":"Stockholm Arlanda"},"ATH":{"icao":"LGAV","name":"Athens"},"BCN":{"icao":"LEBL","name":"Barcelona"},"BDS":{"icao":"LIBR","name":"Brindisi"},"BER":{"icao":"EDDB","name":"Berlin"},"BGY":{"icao":"LIME","name":"Bergamo"},"BLQ":{"icao":"LIPE","name":"Bologna"},"BRE":{"icao":"EDDW","name":"Bremen"},"BRI":{"icao":"LIBD","name":"Bari"},"BRN":{"icao":"LSZB","name":"Bern"},"BRU":{"icao":"EBBR","name":"Brussels"},"BSL":{"icao":"LFSB","name":"Basel-Mulhouse"},"BUD":{"icao":"LHBP","name":"Budapest"},"BZO":{"icao":"LIPB","name":"Bolzano"},"CAG":{"icao":"LIEE","name":"Cagliari"},"CDG":{"icao":"LFPG","name":"Paris Charles de Gaulle"},"CGN":{"icao":"EDDK","name":"Cologne Bonn"},"CIA":{"icao":"LIRA","name":"Rome Ciampino"},"CPH":{"icao":"EKCH","name":"Copenhagen"},"CTA":{"icao":"LICC","name":"Catania"},"CUF":{"icao":"LIMZ","name":"Cuneo"},"DBV":{"icao":"LDDU","name":"Dubrovnik"},"DRS":{"icao":"EDDC","name":"Dresden"},"DUS":{"icao":"EDDL","name":"Duesseldorf"},"FCO":{"icao":"LIRF","name":"Rome Fiumicino"},"FLR":{"icao":"LIRQ","name":"Florence"},"FMM":{"icao":"EDJA","name":"Memmingen"},"FRA":{"icao":"EDDF","name":"Frankfurt"},"GDN":{"icao":"EPGD","name":"Gdansk"},"GOA":{"icao":"LIMJ","name":"Genoa"},"GVA":{"icao":"LSGG","name":"Geneva"},"HAJ":{"icao":"EDDV","name":"Hanover"},"HAM":{"icao":"EDDH","name":"Hamburg"},"IBZ":{"icao":"LEIB","name":"Ibiza"},"INN":{"icao":"LOWI","name":"Innsbruck"},"KRK":{"icao":"EPKK","name":"Krakow"},"KTW":{"icao":"EPKT","name":"Katowice"},"LCY":{"icao":"EGLC","name":"London City"},"LEJ":{"icao":"EDDP","name":"Leipzig"},"LGW":{"icao":"EGKK","name":"London Gatwick"},"LHR":{"icao":"EGLL","name":"London Heathrow"},"LIN":{"icao":"LIML","name":"Milan Linate"},"LIS":{"icao":"LPPT","name":"Lisbon"},"LJU":{"icao":"LJLJ","name":"Ljubljana"},"LYS":{"icao":"LFLL","name":"Lyon"},"MAD":{"icao":"LEMD","name":"Madrid"},"MAN":{"icao":"EGCC","name":"Manchester"},"MRS":{"icao":"LFML","name":"Marseille"},"MUC":{"icao":"EDDM","name":"Munich"},"MXP":{"icao":"LIMC","name":"Milan Malpensa"},"NAP":{"icao":"LIRN","name":"Naples"},"NCE":{"icao":"LFMN","name":"Nice"},"NUE":{"icao":"EDDN","name":"Nuremberg"},"OLB":{"icao":"LIEO","name":"Olbia"},"OPO":{"icao":"LPPR","name":"Porto"},"ORY":{"icao":"LFPO","name":"Paris Orly"},"OSL":{"icao":"ENGM","name":"Oslo"},"PEG":{"icao":"LIRZ","name":"Perugia"},"PMF":{"icao":"LIMP","name":"Parma"},"PMI":{"icao":"LEPA","name":"Palma de Mallorca"},"PMO":{"icao":"LICJ","name":"Palermo"},"POZ":{"icao":"EPPO","name":"Poznan"},"PRG":{"icao":"LKPR","name":"Prague"},"PSA":{"icao":"LIRP","name":"Pisa"},"PUY":{"icao":"LDPL","name":"Pula"},"RMI":{"icao":"LIPR","name":"Rimini"},"SPU":{"icao":"LDSP","name":"Split"},"STN":{"icao":"EGSS","name":"London Stansted"},"STR":{"icao":"EDDS","name":"Stuttgart"},"SUF":{"icao":"LICA","name":"Lamezia Terme"},"SZG":{"icao":"LOWS","name":"Salzburg"},"TLS":{"icao":"LFBO","name":"Toulouse"},"TPS":{"icao":"LICT","name":"Trapani"},"TRN":{"icao":"LIMF","name":"Turin"},"TRS":{"icao":"LIPQ","name":"Trieste"},"TSF":{"icao":"LIPH","name":"Treviso"},"UDN":{"icao":"LIPD","name":"Udine"},"VBS":{"icao":"LIPO","name":"Brescia"},"VCE":{"icao":"LIPZ","name":"Venice"},"VIE":{"icao":"LOWW","name":"Vienna"},"VRN":{"icao":"LIPX","name":"Verona"},"WAW":{"icao":"EPWA","name":"Warsaw Chopin"},"WRO":{"icao":"EPWR","name":"Wroclaw"},"ZAG":{"icao":"LDZA","name":"Zagreb"},"ZRH":{"icao":"LSZH","name":"Zurich"}};
+var DKEY = "briefing.deck.v1", NKEY = "notices.v1", SKEY = "daybrief.sigwx.v1";
+var D = {cards: [], rot: {}, crews: {}}, NOTICES = [], WX = null, WXSTATE = "loading", DATE = "", SIGWX = "", NOW = function(){ return Date.now(); };
+
+function esc(s){ return String(s == null ? "" : s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+function tc(s){ return String(s || "").toLowerCase().replace(/(^|[\s'\-])(\S)/g, function(m, a, b){ return a + b.toUpperCase(); }).replace(/\s+/g, " ").trim(); }
+function mins(t){ var m = /^(\d{1,2}):(\d{2})$/.exec(t || ""); return m ? (+m[1]) * 60 + (+m[2]) : null; }
+function dkey(d){ var p = String(d || "").split("/"); return p.length === 3 ? p[2] + p[1] + p[0] : ""; }
+function iso(d){ var p = String(d || "").split("/"); return p.length === 3 ? p[2] + "-" + p[1] + "-" + p[0] : ""; }
+function norm(s){ return String(s || "").replace(/[\s\-]/g, "").toUpperCase(); }
+function jget(k, d){ try{ var t = localStorage.getItem(k); return t ? JSON.parse(t) : d; }catch(e){ return d; } }
+function today(){ var d = new Date(NOW()); return ("0" + d.getDate()).slice(-2) + "/" + ("0" + (d.getMonth() + 1)).slice(-2) + "/" + d.getFullYear(); }
+
+/* ---------- crew ---------- */
+function crewMap(c){
+  var m = {}, fo = 0, ca = 0;
+  (c.crew || []).forEach(function(x){
+    var nm = tc(String(x.name).replace(/\s*-\s*CA\d+\s*$/i, "")), lab;
+    if(x.role === "CPT") lab = "CPT";
+    else if(x.role === "PIL"){ fo++; lab = fo === 1 ? "FO" : "FO" + fo; }
+    else if(x.role === "AVR"){ ca++; var mm = String(x.name).match(/-\s*(CA\d+)\s*$/i); lab = mm ? mm[1].toUpperCase() : "CA" + ca; }
+    else lab = x.role || "?";
+    m[lab] = nm;
+  });
+  return m;
+}
+function crewList(crew){
+  var m = crewMap({crew: crew || []}), order = ["CPT", "FO", "FO2"];
+  return Object.keys(m).sort(function(a, b){
+    var ia = order.indexOf(a), ib = order.indexOf(b); if(ia < 0) ia = 9; if(ib < 0) ib = 9;
+    return ia !== ib ? ia - ib : (a < b ? -1 : 1);
+  }).map(function(k){ return k + " " + m[k]; });
+}
+function crewChanges(a, b){
+  var x = crewMap(a), y = crewMap(b), out = [];
+  Object.keys(Object.assign({}, x, y)).sort().forEach(function(k){
+    if(x[k] && y[k]){ if(x[k] !== y[k]) out.push(k + ": " + x[k] + " to " + y[k]); }
+    else if(x[k]) out.push(k + " leaves (" + x[k] + ")");
+    else out.push(k + " joins (" + y[k] + ")");
+  });
+  return out;
+}
+
+/* ---------- day model ---------- */
+function gapMin(sta, std){ var a = mins(sta), b = mins(std); if(a === null || b === null) return null; var d = b - a; return d < 0 ? d + 1440 : d; }
+function tcls(m){ return m === null ? "note" : m < 40 ? "red" : m < 50 ? "yellow" : "green"; }
+function dayCards(date){
+  return D.cards.filter(function(c){ return c.flight && c.flight.date === date; }).sort(function(a, b){ return (mins(a.flight.std) || 0) - (mins(b.flight.std) || 0); });
+}
+function legIndex(legs, card){ var n = norm(card.flight.number), r = -1; legs.forEach(function(l, i){ if(norm(l.number) === n) r = i; }); return r; }
+function pax(c){ var p = c.pax || {}; return {c: +p.business || 0, m: +p.economy || 0, t: (+p.business || 0) + (+p.economy || 0)}; }
+function model(date){
+  var cs = dayCards(date), alerts = [], items = [], blocks = [], airports = [];
+  function al(level, text){ alerts.push({level: level, text: text}); }
+  cs.forEach(function(c, i){
+    var f = c.flight, n = cs[i + 1], it = {card: c, link: null};
+    [f.from, f.to].forEach(function(a){ if(a && airports.indexOf(a) < 0) airports.push(a); });
+    if(n){
+      var lk = {};
+      if(f.to === n.flight.from){
+        var g = gapMin(f.sta, n.flight.std);
+        lk.transit = {airport: f.to, min: g, cls: tcls(g)};
+        if(g !== null && g < 40) al("red", "Short transit at " + f.to + ": " + g + " min before " + n.flight.number);
+        else if(g !== null && g < 50) al("yellow", "Transit at " + f.to + ": " + g + " min before " + n.flight.number);
+      } else lk.transit = {airport: f.to, mismatch: n.flight.from, cls: "note"};
+      if(norm(f.registration) !== norm(n.flight.registration)){
+        lk.acChange = {at: f.to, from: f.registration, fromType: f.aircraftType, to: n.flight.registration, toType: n.flight.aircraftType};
+        al("yellow", "Aircraft change at " + f.to + ": " + f.registration + " to " + n.flight.registration);
+      }
+      var ch = crewChanges(c, n); if(ch.length){ lk.crew = ch; al("yellow", "Crew change before " + n.flight.number + ": " + ch.join("; ")); }
+      it.link = lk;
+    }
+    items.push(it);
+  });
+  cs.forEach(function(c){
+    var last = blocks[blocks.length - 1];
+    if(last && norm(last.reg) === norm(c.flight.registration)) last.cards.push(c);
+    else blocks.push({reg: c.flight.registration, type: c.flight.aircraftType, cards: [c]});
+  });
+  blocks.forEach(function(b){
+    var first = b.cards[0], lastc = b.cards[b.cards.length - 1], rot = D.rot[first.flight.registration + "|" + date];
+    b.defects = first.mel || [];
+    if(b.defects.length) al("yellow", b.reg + " has " + b.defects.length + " technical defect" + (b.defects.length > 1 ? "s" : ""));
+    if(!rot){ b.rot = {missing: true}; return; }
+    var i0 = legIndex(rot.legs, first), i1 = legIndex(rot.legs, lastc), r = {};
+    if(i0 > 0){ var p = rot.legs[i0 - 1]; r.recv = {leg: p, crew: D.crews[p.number + "|" + p.date] || null, here: p.to === first.flight.from}; }
+    else r.recv = {first: i0 === 0};
+    if(i1 >= 0 && i1 < rot.legs.length - 1){ var nx = rot.legs[i1 + 1]; r.give = {leg: nx, crew: D.crews[nx.number + "|" + nx.date] || null, here: nx.from === lastc.flight.to}; }
+    else if(i1 >= 0){ r.give = {none: true, airport: lastc.flight.to, after: lastc.flight.number}; al("yellow", b.reg + ": no more flights today after " + lastc.flight.number + ", night stop at " + lastc.flight.to + ", close the aircraft"); }
+    b.rot = r;
+  });
+  return {date: date, cards: cs, items: items, blocks: blocks, airports: airports, alerts: alerts};
+}
+
+/* ---------- weather ---------- */
+function decodeMetar(raw){
+  var t = String(raw || "").replace(/^(METAR|SPECI)\s+/, ""), tk = t.split(/\s+/), o = {raw: raw};
+  var w = t.match(/\b(VRB|\d{3})(\d{2,3})(?:G(\d{2,3}))?(KT|MPS)\b/);
+  if(w){ var k = w[4] === "MPS" ? 1.944 : 1; o.wind = (w[1] === "VRB" ? "variable" : w[1] + "\u00b0") + " " + Math.round(+w[2] * k) + " kt" + (w[3] ? " gusting " + Math.round(+w[3] * k) : ""); }
+  var cavok = /\bCAVOK\b/.test(t), vis = null, wi = w ? tk.findIndex(function(x){ return x.indexOf(w[0]) === 0; }) : 0;
+  if(cavok) vis = 9999; else for(var i = Math.max(wi + 1, 0); i < tk.length; i++){ if(/^\d{4}$/.test(tk[i])){ vis = +tk[i]; break; } }
+  if(vis !== null) o.vis = vis >= 9999 ? "10 km or more" : vis + " m";
+  var ceil = null; tk.forEach(function(x){ var m = x.match(/^(BKN|OVC|VV)(\d{3})/); if(m){ var h = +m[2] * 100; if(ceil === null || h < ceil) ceil = h; } });
+  o.ceiling = ceil === null ? (cavok ? "none (CAVOK)" : "no ceiling reported") : ceil + " ft";
+  o.cat = vis === null ? "?" : ((vis < 1600 || (ceil !== null && ceil < 500)) ? "LIFR" : (vis < 4800 || (ceil !== null && ceil < 1000)) ? "IFR" : (vis < 8000 || (ceil !== null && ceil < 3000)) ? "MVFR" : "VFR");
+  var wx = tk.filter(function(x){ return /^(\+|-|VC)?(TS|SH|RA|SN|DZ|FG|BR|HZ|GR|GS|SQ|FZ|PL|SG|IC|UP|FC|DS|SS)+/.test(x) && !/^(BKN|OVC|FEW|SCT)/.test(x); }); o.wx = wx.join(" ");
+  var q = t.match(/\bQ(\d{4})\b/); if(q) o.qnh = q[1] + " hPa"; var a = t.match(/\bA(\d{4})\b/); if(!q && a) o.qnh = a[1];
+  var tm = t.match(/\b(\d{2})(\d{2})(\d{2})Z\b/); if(tm) o.obs = {day: +tm[1], hour: +tm[2], min: +tm[3]};
+  return o;
+}
+function obsAge(obs){
+  if(!obs) return null; var n = new Date(NOW()), c = Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), obs.day, obs.hour, obs.min);
+  if(c > n.getTime() + 6 * 3600000) c = Date.UTC(n.getUTCFullYear(), n.getUTCMonth() - 1, obs.day, obs.hour, obs.min);
+  return Math.round((n.getTime() - c) / 60000);
+}
+function icaoOf(code){ var a = AIRPORTS[String(code).toUpperCase()]; return a ? a.icao : ""; }
+function weatherUrls(){
+  var h = location.hostname, repo = location.pathname.split("/")[1], u = [];
+  if(/\.github\.io$/i.test(h) && repo && !/\.html?$/i.test(repo)){ var o = h.split(".")[0]; u.push("https://raw.githubusercontent.com/" + o + "/" + repo + "/main/weather.json", "https://raw.githubusercontent.com/" + o + "/" + repo + "/master/weather.json"); }
+  u.push("weather.json"); return u;
+}
+function loadWeather(){
+  var list = weatherUrls().slice();
+  (function next(){
+    var u = list.shift(); if(!u){ WXSTATE = "none"; render(); return; }
+    fetch(u, {cache: "no-cache"}).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){ if(!j || !j.metar) throw 0; WX = j; WXSTATE = "ok"; render(); }).catch(next);
+  })();
+}
+
+/* ---------- notices ---------- */
+function noticesFor(date, airports){
+  var codes = {}; airports.forEach(function(a){ codes[a.toUpperCase()] = 1; var i = icaoOf(a); if(i) codes[i] = 1; });
+  var d = iso(date);
+  return NOTICES.filter(function(n){
+    var hit = (n.airports || []).some(function(a){ return codes[String(a).toUpperCase()]; });
+    return hit && (!n.from || d >= n.from) && (!n.to || d <= n.to);
+  });
+}
+
+/* ---------- screen ---------- */
+function paxTxt(c){ var p = pax(c); return p.t + " pax (C " + p.c + " / M " + p.m + ")"; }
+function legTxt(l){ return esc(l.number) + " " + esc(l.from) + "-" + esc(l.to) + " " + esc(l.etd) + "-" + esc(l.eta); }
+function crewTxtHtml(crew){ var l = crewList(crew); return l.length ? esc(l.join(", ")) : '<span class="sub">crew not available</span>'; }
+function flightsPanel(m){
+  var h = '<div class="panel"><h2>Flights</h2>';
+  m.items.forEach(function(it){
+    var c = it.card, f = c.flight;
+    h += '<div class="flight"><b class="fn num">' + esc(f.number) + '</b> ' + esc(f.from) + ' to ' + esc(f.to) + ' <span class="num">' + esc(f.std) + '-' + esc(f.sta) + '</span>' +
+      '<br><span class="sub">' + esc(f.registration) + (f.aircraftType ? ' ' + esc(f.aircraftType) : '') + ', ' + esc(paxTxt(c)) + '</span>' +
+      '<br><span class="sub">' + crewTxtHtml(c.crew) + '</span>' + ((c.errors && c.errors.length) ? '<br><span class="err">' + c.errors.map(esc).join(" ") + '</span>' : '') + '</div>';
+    if(it.link){
+      var t = it.link.transit;
+      if(t.mismatch){
+        h += '<div class="link t-note">Next flight leaves from ' + esc(t.mismatch) + ', not from ' + esc(t.airport) + '</div>';
+        if(it.link.acChange || it.link.crew) h += '<div class="link t-note">' + (it.link.acChange ? 'Aircraft change: ' + esc(it.link.acChange.from) + ' to ' + esc(it.link.acChange.to) + '. ' : '') + (it.link.crew ? 'Crew change: ' + it.link.crew.map(esc).join('; ') : '') + '</div>';
+      } else h += '<div class="link t-' + t.cls + '"><b>Transit at ' + esc(t.airport) + ': ' + (t.min === null ? "unknown" : t.min + ' min') + '</b>' + (t.cls === "red" ? ' (short)' : t.cls === "yellow" ? ' (tight)' : t.cls === "green" ? ' (comfortable)' : '') +
+        (it.link.acChange ? '<ul><li><b>Aircraft change</b>: ' + esc(it.link.acChange.from) + (it.link.acChange.fromType ? ' ' + esc(it.link.acChange.fromType) : '') + ' to ' + esc(it.link.acChange.to) + (it.link.acChange.toType ? ' ' + esc(it.link.acChange.toType) : '') + '</li></ul>' : '') +
+        (it.link.crew ? '<ul><li><b>Crew change</b>: ' + it.link.crew.map(esc).join('</li><li>') + '</li></ul>' : '') + '</div>';
+    }
+  });
+  return h + '</div>';
+}
+function aircraftPanel(m){
+  var h = '<div class="panel"><h2>Aircraft</h2><div class="cols">';
+  m.blocks.forEach(function(b){
+    h += '<div class="box"><b>' + esc(b.reg) + (b.type ? ' ' + esc(b.type) : '') + '</b><br><span class="sub">' + b.cards.map(function(c){ return esc(c.flight.number); }).join(", ") + '</span>';
+    h += '<h3>Technical defects</h3>' + (b.defects.length ? '<ul style="margin:0;padding-left:20px">' + b.defects.map(function(d){ return '<li><b>' + esc(d.ref) + '</b> ' + esc(String(d.description).replace(/\|[^|]*\|/g, " ")) + '</li>'; }).join("") + '</ul>' : '<span class="sub">None listed</span>');
+    var r = b.rot;
+    if(r.missing) h += '<h3>Rotation</h3><span class="sub">The rotation of this aircraft was not collected.</span>';
+    else {
+      h += '<h3>Aircraft received from</h3>';
+      if(r.recv.leg) h += '<div>' + legTxt(r.recv.leg) + (r.recv.leg.on ? ', landed ' + esc(r.recv.leg.on) : '') + (r.recv.here ? '' : ' <span class="err">(not at your departure airport)</span>') + '<br><span class="sub">' + crewTxtHtml(r.recv.crew) + '</span></div>';
+      else h += '<span class="sub">' + (r.recv.first ? 'First flight of this aircraft today, no handover.' : 'Not found in the rotation.') + '</span>';
+      h += '<h3>Aircraft handed over to</h3>';
+      if(r.give && r.give.leg) h += '<div><b>Flies again today:</b> ' + legTxt(r.give.leg) + (r.give.here ? '' : ' <span class="err">(not from your arrival airport)</span>') + '<br><span class="sub">' + crewTxtHtml(r.give.crew) + '</span></div>';
+      else if(r.give && r.give.none) h += '<div><b>No more flights today.</b> Night stop at ' + esc(r.give.airport) + ': close the aircraft.</div>';
+      else h += '<span class="sub">Not found in the rotation.</span>';
+    }
+    h += '</div>';
+  });
+  return h + '</div></div>';
+}
+function wxPanel(m){
+  var h = '<div class="panel"><h2>Weather</h2>';
+  if(WXSTATE === "ok" && WX){
+    var gen = WX.generated ? ' Fetched ' + esc(WX.generated.replace("T", " ").replace(/:\d\dZ$/, "Z")) + '.' : "";
+    h += '<p class="hint" style="margin:0 0 10px">METAR and TAF from aviationweather.gov, refreshed every half hour.' + gen + ' This is an overview, not a replacement for the official briefing.</p><div class="cols">';
+  } else h += '<p class="hint" style="margin:0 0 10px">' + (WXSTATE === "loading" ? "Loading weather..." : "The automatic weather file is not set up yet. Use the links below.") + '</p><div class="cols">';
+  m.airports.forEach(function(a){
+    var ic = icaoOf(a), me = WX && WX.metar && WX.metar[ic], ta = WX && WX.taf && WX.taf[ic];
+    h += '<div class="box"><b>' + esc(a) + (ic ? ' (' + esc(ic) + ')' : '') + '</b>';
+    if(!ic) h += '<br><span class="err">ICAO code not known. Add this airport to airports.json.</span>';
+    else if(me && me.raw){
+      var d = decodeMetar(me.raw), age = obsAge(d.obs), cls = d.cat === "VFR" ? "green" : d.cat === "MVFR" ? "yellow" : (d.cat === "IFR" || d.cat === "LIFR") ? "red" : "note";
+      h += ' <span class="pill t-' + cls + '">' + esc(d.cat) + '</span>' + (age !== null ? '<span class="sub">' + (age > 90 ? '<b class="err">old, ' : '') + age + ' min old' + (age > 90 ? '</b>' : '') + '</span>' : '');
+      h += '<br><span class="num">Wind ' + esc(d.wind || "?") + ', visibility ' + esc(d.vis || "?") + ', ceiling ' + esc(d.ceiling) + (d.wx ? ', ' + esc(d.wx) : '') + (d.qnh ? ', QNH ' + esc(d.qnh) : '') + '</span><pre>' + esc(me.raw) + '</pre>';
+      if(ta && ta.raw) h += '<pre>' + esc(ta.raw) + '</pre>';
+    } else if(WXSTATE === "ok") h += '<br><span class="sub">No METAR available for ' + esc(ic) + '.</span>';
+    if(ic) h += '<div class="row2"><a class="btn small" target="_blank" rel="noopener" href="https://aviationweather.gov/data/metar/?ids=' + esc(ic) + '&hours=0&taf=true">Open METAR and TAF</a></div>';
+    h += '</div>';
+  });
+  return h + '</div></div>';
+}
+function sigwxPanel(){
+  var h = '<div class="panel"><h2>Significant weather chart, Europe</h2>';
+  if(SIGWX) h += '<img class="sig" src="' + esc(SIGWX) + '" alt="Significant weather chart" onerror="this.outerHTML=\'<p class=&quot;err&quot;>The chart could not be loaded from this address.</p>\'"><div class="row2"><a class="btn small" target="_blank" rel="noopener" href="' + esc(SIGWX) + '">Open full size</a></div>';
+  else h += '<p class="hint" style="margin:0 0 10px">No chart address set. Paste the address of the chart image you use for the Europe SIGWX chart below.</p>';
+  h += '<div class="row2"><input id="sigurl" type="url" placeholder="Address of the chart image" value="' + esc(SIGWX) + '" autocapitalize="off" autocorrect="off"><button class="btn small" type="button" id="sigsave">Save address</button></div>' +
+    '<div class="row2"><a class="btn small" target="_blank" rel="noopener" href="https://aviationweather.gov/sigwx">Open aviationweather.gov SIGWX page</a></div></div>';
+  return h;
+}
+function noticesPanel(m){
+  var ns = noticesFor(m.date, m.airports);
+  var h = '<div class="panel"><h2>Company notices</h2>';
+  if(!ns.length) h += '<p class="hint" style="margin:0">No notices for these airports on this date.</p>';
+  ns.forEach(function(n){ h += '<div class="box" style="margin-bottom:10px"><b>' + esc(n.title) + '</b> <span class="sub">' + esc((n.airports || []).join(", ")) + (n.from || n.to ? ', valid ' + esc(n.from || "") + ' to ' + esc(n.to || "") : '') + (n.source ? ', ' + esc(n.source) : '') + '</span><pre>' + esc(n.text) + '</pre></div>'; });
+  return h + '<div class="row2"><a class="btn small" href="notices.html">Manage notices</a></div></div>';
+}
+function render(){
+  var app = document.getElementById("app");
+  var dates = []; D.cards.forEach(function(c){ if(c.flight && dates.indexOf(c.flight.date) < 0) dates.push(c.flight.date); }); dates.sort(function(a, b){ return dkey(a) < dkey(b) ? -1 : 1; });
+  if(!dates.length){ app.innerHTML = '<div class="panel"><h2>No flights yet</h2><p>Tap your bookmark on the duty plan page. The flights of the day are collected for the briefing cards and for this daily briefing.</p></div>'; return; }
+  if(!DATE || dates.indexOf(DATE) < 0) DATE = dates.indexOf(today()) >= 0 ? today() : dates[dates.length - 1];
+  var m = model(DATE), tot = 0, regs = {}; m.cards.forEach(function(c){ tot += pax(c).t; regs[norm(c.flight.registration)] = 1; });
+  var ns = noticesFor(DATE, m.airports);
+  if(ns.length) m.alerts.push({level: "yellow", text: ns.length + " company notice" + (ns.length > 1 ? "s" : "") + " for the airports of the day"});
+  var h = '<div class="panel"><h2>' + esc(DATE) + '</h2>' + (dates.length > 1 ? '<div class="chips" style="margin-bottom:10px">' + dates.map(function(d){ return '<button class="chip" type="button" data-date="' + esc(d) + '" aria-pressed="' + (d === DATE) + '">' + esc(d) + '</button>'; }).join("") + '</div>' : '') +
+    '<p style="margin:0">' + m.cards.length + ' flights, ' + Object.keys(regs).length + ' aircraft, ' + tot + ' passengers booked. Airports: ' + esc(m.airports.join(", ")) + '.</p>' +
+    '<p class="hint">Times are as shown in the portal. Transit is the time from scheduled arrival to scheduled departure.</p></div>';
+  if(m.alerts.length) h += '<div class="panel"><h2>To note</h2>' + m.alerts.map(function(a){ return '<div class="alert"><span class="pill t-' + (a.level === "red" ? "red" : "yellow") + '">' + (a.level === "red" ? "Important" : "Note") + '</span><span>' + esc(a.text) + '</span></div>'; }).join("") + '</div>';
+  h += flightsPanel(m) + aircraftPanel(m) + wxPanel(m) + sigwxPanel() + noticesPanel(m);
+  app.innerHTML = h;
+}
+document.addEventListener("click", function(e){
+  var t = e.target.closest("button"); if(!t) return;
+  if(t.dataset.date){ DATE = t.dataset.date; render(); return; }
+  if(t.id === "sigsave"){ SIGWX = document.getElementById("sigurl").value.trim(); try{ localStorage.setItem(SKEY, JSON.stringify(SIGWX)); }catch(x){} render(); }
+});
+(function init(){
+  (function findPhoto(list){
+    var n = list.shift(); if(!n) return;
+    var im = new Image();
+    im.onload = function(){ document.body.style.setProperty("--photo", 'url("' + n + '")'); document.body.classList.add("photo"); };
+    im.onerror = function(){ findPhoto(list); };
+    im.src = n;
+  })(["background.jpg","background.jpeg","background.png","background.webp","Background.jpg","background.JPG","background.JPEG","background.PNG"]);
+  var d = jget(DKEY, null); if(d && d.cards) D = {cards: d.cards, rot: d.rot || {}, crews: d.crews || {}};
+  NOTICES = jget(NKEY, []) || []; SIGWX = jget(SKEY, "") || "";
+  render(); loadWeather();
+})();
+window.__t = {model: model, decodeMetar: decodeMetar, tcls: tcls, crewChanges: crewChanges, noticesFor: noticesFor, obsAge: obsAge, setNow: function(f){ NOW = f; }, setWx: function(w){ WX = w; WXSTATE = "ok"; render(); }};
+</script>
+<script src="menu.js"></script>
+</body>
+</html>

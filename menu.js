@@ -3,7 +3,9 @@
   var ITEMS = [
     ["dow.html", "DOW and DOI calculator"],
     ["briefing.html", "Flight briefing"],
+    ["daybrief.html", "Daily briefing"],
     ["roster.html", "Roster: calendar and logbook"],
+    ["notices.html", "Company notices"],
     ["meo.html", "mEO, single engine departures"]
   ];
   var here = (location.pathname.split("/").pop() || "index.html").toLowerCase();

@@ -1,0 +1,357 @@
+{
+ "note": "IATA code to ICAO code, used for the weather. Add the airports you fly to.",
+ "airports": {
+  "AHO": {
+   "icao": "LIEA",
+   "name": "Alghero"
+  },
+  "AMS": {
+   "icao": "EHAM",
+   "name": "Amsterdam"
+  },
+  "AOI": {
+   "icao": "LIPY",
+   "name": "Ancona"
+  },
+  "ARN": {
+   "icao": "ESSA",
+   "name": "Stockholm Arlanda"
+  },
+  "ATH": {
+   "icao": "LGAV",
+   "name": "Athens"
+  },
+  "BCN": {
+   "icao": "LEBL",
+   "name": "Barcelona"
+  },
+  "BDS": {
+   "icao": "LIBR",
+   "name": "Brindisi"
+  },
+  "BER": {
+   "icao": "EDDB",
+   "name": "Berlin"
+  },
+  "BGY": {
+   "icao": "LIME",
+   "name": "Bergamo"
+  },
+  "BLQ": {
+   "icao": "LIPE",
+   "name": "Bologna"
+  },
+  "BRE": {
+   "icao": "EDDW",
+   "name": "Bremen"
+  },
+  "BRI": {
+   "icao": "LIBD",
+   "name": "Bari"
+  },
+  "BRN": {
+   "icao": "LSZB",
+   "name": "Bern"
+  },
+  "BRU": {
+   "icao": "EBBR",
+   "name": "Brussels"
+  },
+  "BSL": {
+   "icao": "LFSB",
+   "name": "Basel-Mulhouse"
+  },
+  "BUD": {
+   "icao": "LHBP",
+   "name": "Budapest"
+  },
+  "BZO": {
+   "icao": "LIPB",
+   "name": "Bolzano"
+  },
+  "CAG": {
+   "icao": "LIEE",
+   "name": "Cagliari"
+  },
+  "CDG": {
+   "icao": "LFPG",
+   "name": "Paris Charles de Gaulle"
+  },
+  "CGN": {
+   "icao": "EDDK",
+   "name": "Cologne Bonn"
+  },
+  "CIA": {
+   "icao": "LIRA",
+   "name": "Rome Ciampino"
+  },
+  "CPH": {
+   "icao": "EKCH",
+   "name": "Copenhagen"
+  },
+  "CTA": {
+   "icao": "LICC",
+   "name": "Catania"
+  },
+  "CUF": {
+   "icao": "LIMZ",
+   "name": "Cuneo"
+  },
+  "DBV": {
+   "icao": "LDDU",
+   "name": "Dubrovnik"
+  },
+  "DRS": {
+   "icao": "EDDC",
+   "name": "Dresden"
+  },
+  "DUS": {
+   "icao": "EDDL",
+   "name": "Duesseldorf"
+  },
+  "FCO": {
+   "icao": "LIRF",
+   "name": "Rome Fiumicino"
+  },
+  "FLR": {
+   "icao": "LIRQ",
+   "name": "Florence"
+  },
+  "FMM": {
+   "icao": "EDJA",
+   "name": "Memmingen"
+  },
+  "FRA": {
+   "icao": "EDDF",
+   "name": "Frankfurt"
+  },
+  "GDN": {
+   "icao": "EPGD",
+   "name": "Gdansk"
+  },
+  "GOA": {
+   "icao": "LIMJ",
+   "name": "Genoa"
+  },
+  "GVA": {
+   "icao": "LSGG",
+   "name": "Geneva"
+  },
+  "HAJ": {
+   "icao": "EDDV",
+   "name": "Hanover"
+  },
+  "HAM": {
+   "icao": "EDDH",
+   "name": "Hamburg"
+  },
+  "IBZ": {
+   "icao": "LEIB",
+   "name": "Ibiza"
+  },
+  "INN": {
+   "icao": "LOWI",
+   "name": "Innsbruck"
+  },
+  "KRK": {
+   "icao": "EPKK",
+   "name": "Krakow"
+  },
+  "KTW": {
+   "icao": "EPKT",
+   "name": "Katowice"
+  },
+  "LCY": {
+   "icao": "EGLC",
+   "name": "London City"
+  },
+  "LEJ": {
+   "icao": "EDDP",
+   "name": "Leipzig"
+  },
+  "LGW": {
+   "icao": "EGKK",
+   "name": "London Gatwick"
+  },
+  "LHR": {
+   "icao": "EGLL",
+   "name": "London Heathrow"
+  },
+  "LIN": {
+   "icao": "LIML",
+   "name": "Milan Linate"
+  },
+  "LIS": {
+   "icao": "LPPT",
+   "name": "Lisbon"
+  },
+  "LJU": {
+   "icao": "LJLJ",
+   "name": "Ljubljana"
+  },
+  "LYS": {
+   "icao": "LFLL",
+   "name": "Lyon"
+  },
+  "MAD": {
+   "icao": "LEMD",
+   "name": "Madrid"
+  },
+  "MAN": {
+   "icao": "EGCC",
+   "name": "Manchester"
+  },
+  "MRS": {
+   "icao": "LFML",
+   "name": "Marseille"
+  },
+  "MUC": {
+   "icao": "EDDM",
+   "name": "Munich"
+  },
+  "MXP": {
+   "icao": "LIMC",
+   "name": "Milan Malpensa"
+  },
+  "NAP": {
+   "icao": "LIRN",
+   "name": "Naples"
+  },
+  "NCE": {
+   "icao": "LFMN",
+   "name": "Nice"
+  },
+  "NUE": {
+   "icao": "EDDN",
+   "name": "Nuremberg"
+  },
+  "OLB": {
+   "icao": "LIEO",
+   "name": "Olbia"
+  },
+  "OPO": {
+   "icao": "LPPR",
+   "name": "Porto"
+  },
+  "ORY": {
+   "icao": "LFPO",
+   "name": "Paris Orly"
+  },
+  "OSL": {
+   "icao": "ENGM",
+   "name": "Oslo"
+  },
+  "PEG": {
+   "icao": "LIRZ",
+   "name": "Perugia"
+  },
+  "PMF": {
+   "icao": "LIMP",
+   "name": "Parma"
+  },
+  "PMI": {
+   "icao": "LEPA",
+   "name": "Palma de Mallorca"
+  },
+  "PMO": {
+   "icao": "LICJ",
+   "name": "Palermo"
+  },
+  "POZ": {
+   "icao": "EPPO",
+   "name": "Poznan"
+  },
+  "PRG": {
+   "icao": "LKPR",
+   "name": "Prague"
+  },
+  "PSA": {
+   "icao": "LIRP",
+   "name": "Pisa"
+  },
+  "PUY": {
+   "icao": "LDPL",
+   "name": "Pula"
+  },
+  "RMI": {
+   "icao": "LIPR",
+   "name": "Rimini"
+  },
+  "SPU": {
+   "icao": "LDSP",
+   "name": "Split"
+  },
+  "STN": {
+   "icao": "EGSS",
+   "name": "London Stansted"
+  },
+  "STR": {
+   "icao": "EDDS",
+   "name": "Stuttgart"
+  },
+  "SUF": {
+   "icao": "LICA",
+   "name": "Lamezia Terme"
+  },
+  "SZG": {
+   "icao": "LOWS",
+   "name": "Salzburg"
+  },
+  "TLS": {
+   "icao": "LFBO",
+   "name": "Toulouse"
+  },
+  "TPS": {
+   "icao": "LICT",
+   "name": "Trapani"
+  },
+  "TRN": {
+   "icao": "LIMF",
+   "name": "Turin"
+  },
+  "TRS": {
+   "icao": "LIPQ",
+   "name": "Trieste"
+  },
+  "TSF": {
+   "icao": "LIPH",
+   "name": "Treviso"
+  },
+  "UDN": {
+   "icao": "LIPD",
+   "name": "Udine"
+  },
+  "VBS": {
+   "icao": "LIPO",
+   "name": "Brescia"
+  },
+  "VCE": {
+   "icao": "LIPZ",
+   "name": "Venice"
+  },
+  "VIE": {
+   "icao": "LOWW",
+   "name": "Vienna"
+  },
+  "VRN": {
+   "icao": "LIPX",
+   "name": "Verona"
+  },
+  "WAW": {
+   "icao": "EPWA",
+   "name": "Warsaw Chopin"
+  },
+  "WRO": {
+   "icao": "EPWR",
+   "name": "Wroclaw"
+  },
+  "ZAG": {
+   "icao": "LDZA",
+   "name": "Zagreb"
+  },
+  "ZRH": {
+   "icao": "LSZH",
+   "name": "Zurich"
+  }
+ }
+}

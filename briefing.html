@@ -308,6 +308,8 @@ function loadDeck(){
   var n = new Date(), y = new Date(n.getFullYear(), n.getMonth(), n.getDate() - 1);
   var cut = "" + y.getFullYear() + ("0" + (y.getMonth() + 1)).slice(-2) + ("0" + y.getDate()).slice(-2);
   D.cards = D.cards.filter(function(c){ return dateKey(c.flight && c.flight.date) >= cut; });
+  if(!D.rot) D.rot = {}; if(!D.crews) D.crews = {};
+  [D.rot, D.crews].forEach(function(m){ Object.keys(m).forEach(function(k){ if(dateKey(k.split("|")[1]) < cut) delete m[k]; }); });
   if(!curCard()) D.sel = D.cards.length ? D.cards[0].id : null;
 }
 function sortDeck(){ D.cards.sort(function(a, b){ var x = dateKey(a.flight.date) + (a.flight.std || ""), y = dateKey(b.flight.date) + (b.flight.std || ""); return x < y ? -1 : x > y ? 1 : 0; }); }
@@ -325,6 +327,9 @@ function intake(o){
   INTAKE = [];
   if(o && o.flights){
     var ids = [];
+    if(!D.rot) D.rot = {}; if(!D.crews) D.crews = {};
+    Object.keys(o.rotations || {}).forEach(function(k){ D.rot[k] = o.rotations[k]; });
+    Object.keys(o.crews || {}).forEach(function(k){ D.crews[k] = o.crews[k]; });
     o.flights.forEach(function(f){ var id = putCard(f); if(id) ids.push(id); else if(f && f.errors) INTAKE = INTAKE.concat(f.errors); });
     if(o.day) D.cards = D.cards.filter(function(c){ return c.flight.date !== o.day || ids.indexOf(c.id) >= 0; });
     if(o.errors && o.errors.length) INTAKE = INTAKE.concat(o.errors);
@@ -352,7 +357,7 @@ function render(){
     var c = curCard(), n = counts(c.crew), max = n.p + n.c, res = cardRes(c);
     var chips = D.cards.map(function(x){ return '<button type="button" data-card="' + esc(x.id) + '" aria-pressed="' + (x.id === D.sel) + '">' + esc(x.flight.number) + ', ' + esc(x.flight.from) + ' to ' + esc(x.flight.to) + '</button>'; }).join("");
     h += '<div class="panel"><h2>Flights</h2><div class="seg">' + chips + '</div>' +
-      '<div class="row2"><button class="btn primary" type="button" id="make">Create PDF</button>' +
+      '<div class="row2"><button class="btn primary" type="button" id="make">Create PDF</button><a class="btn" href="daybrief.html">Daily briefing</a>' +
       '<span id="pdfmsg"></span></div></div>';
     h += '<div class="panel"><h2>' + esc(c.flight.number) + ', ' + esc(c.flight.from) + ' to ' + esc(c.flight.to) + '</h2>' +
       ((c.errors && c.errors.length) ? '<p class="err">' + c.errors.map(esc).join("<br>") + '</p>' : '') + '<div class="two"><div>' +
