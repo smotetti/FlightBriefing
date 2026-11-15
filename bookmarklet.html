@@ -20,7 +20,7 @@ h2{margin:0 0 10px;font-size:19px}ol{margin:0;padding-left:22px}li{margin-bottom
 input[type=url]{width:100%;min-height:52px;font:16px/1.3 ui-monospace,Menlo,monospace;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:0 12px;margin-top:6px}
 textarea{width:100%;height:110px;font:13px/1.3 ui-monospace,Menlo,monospace;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px}
 .btn{min-height:56px;padding:0 20px;font:inherit;font-size:19px;font-weight:650;color:var(--on-teal);background:var(--teal);border:0;border-radius:12px;cursor:pointer;margin:10px 0}
-.msg{color:var(--muted);margin:4px 0 0}
+.msg{color:var(--muted);margin:4px 0 0;word-break:break-all}.msg.err{color:#a64a00;font-weight:600}
 </style>
 </head>
 <body>
@@ -38,6 +38,7 @@ textarea{width:100%;height:110px;font:13px/1.3 ui-monospace,Menlo,monospace;colo
     <label for="target"><b>Address of your briefing page</b></label>
     <input id="target" type="url" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Address of your briefing page">
     <p class="msg" id="tmsg"></p>
+    <p class="msg" id="resolved"></p>
     <p style="margin:6px 0 10px"><a href="#" id="testlink" target="_blank" rel="noopener">Open it to test</a></p>
     <textarea id="code" readonly aria-label="Bookmark code"></textarea>
   </div>
@@ -171,6 +172,7 @@ function collect(BASE, go, LB){
       out.flights.sort(function(a, b){ return (a.i === undefined ? 9999 : a.i) - (b.i === undefined ? 9999 : b.i); });
       out.flights.forEach(function(c){ delete c.i; });
     }
+    if(!/^https?:\/\//i.test(TARGET)){ say("The bookmark has no full web address for the briefing page (" + String(TARGET).slice(0, 60) + "). Open the setup page from your GitHub address and copy the code again."); return; }
     var u = TARGET + encode(out), ok = true;
     try{ new URL(u); }catch(e){ ok = false; }
     if(!ok){ say("The address for the briefing page is not valid: " + TARGET.slice(0, 90)); return; }
@@ -343,16 +345,26 @@ function collect(BASE, go, LB){
   out.errors.push("Open the duty plan, a flight's Details page or the monthly roster first, then tap the bookmark again.");
   finish();
 }
+function resolvedAddress(){
+  var field = document.getElementById("target"), v = (field && field.value.trim()) || "briefing.html", abs = v;
+  try{ abs = new URL(v, location.href).href; }catch(e){}
+  return abs.split("#")[0];
+}
 function bookmarkletCode(){
-  var field = document.getElementById("target");
-  var base = ((field && field.value.trim()) || new URL("briefing.html", location.href).href).split("#")[0] + "#d=";
+  var base = resolvedAddress() + "#d=";
   var lb = base.replace(/[^\/]*#d=$/, "roster.html#d=");
   return "javascript:" + encodeURIComponent("void((" + collect.toString() + ")(" + JSON.stringify(base) + ",void 0," + JSON.stringify(lb) + "))");
 }
 (function(){
   var code = document.getElementById("code"), msg = document.getElementById("msg");
   var target = document.getElementById("target"), tmsg = document.getElementById("tmsg"), tlink = document.getElementById("testlink");
-  function refresh(){ code.value = bookmarkletCode(); tlink.href = target.value.trim() || "#"; }
+  var resolved = document.getElementById("resolved");
+  function refresh(){
+    code.value = bookmarkletCode(); tlink.href = resolvedAddress();
+    var a = resolvedAddress();
+    if(/^https:\/\//i.test(a)){ resolved.className = "msg"; resolved.textContent = "The bookmark will open: " + a; }
+    else { resolved.className = "msg err"; resolved.textContent = "This page was not opened from your GitHub address, so the bookmark would not find the briefing page (" + a + "). Open this setup page from https://YOURNAME.github.io/... and copy the code again."; }
+  }
   var dir = location.href.split("#")[0].split("?")[0].replace(/[^\/]*$/, "");
   var names = ["briefing.html", "FlightBriefing.html", "flightbriefing.html", "Briefing.html", "flight-briefing.html"];
   target.value = dir + names[0];
