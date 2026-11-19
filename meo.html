@@ -130,7 +130,7 @@ function viewAirports(){
   return h + '</div>';
 }
 function viewRunways(a){
-  return '<div class="panel"><div class="crumbs"><button class="btn" type="button" data-go="">All airports</button></div><h2>' + apTitle(a) + '</h2><p class="hint" style="margin:0 0 12px">Choose the runway</p><div class="grid">' +
+  return '<div class="panel"><div class="crumbs"><button class="btn" type="button" data-go="">All airports</button></div><h2>' + apTitle(a) + '</h2><p class="hint" style="margin:0 0 12px">' + (a.runways.length ? 'Choose the runway' : 'No runways are listed for this airport yet. Upload a chart named meo-' + esc(a.icao) + '-RUNWAY.png, for example meo-' + esc(a.icao) + '-18.png, and the runway appears here.') + '</p><div class="grid">' +
     a.runways.map(function(r){ return '<button class="item rwy" type="button" data-go="' + esc(a.icao + "/" + r.id) + '"' + (r.charts.length ? '' : ' data-empty="1"') + '><b>RWY ' + esc(r.id) + '</b>' + (r.charts.length ? '' : '<span class="tag">No chart yet</span>') + '</button>'; }).join("") +
     '</div></div>';
 }

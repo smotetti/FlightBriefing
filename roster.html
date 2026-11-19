@@ -82,7 +82,7 @@ function jset(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){
 function crewTxt(it){
   var order = {CPT: 0, PIL: 1, AVR: 2};
   return (it.crew || []).slice().sort(function(a, b){ return (order[a.role] === undefined ? 3 : order[a.role]) - (order[b.role] === undefined ? 3 : order[b.role]); }).map(function(c){
-    var m = String(c.name).match(/^(.*?)\s*-\s*(CA\d+)\s*$/i), nm = tc(m ? m[1] : c.name), role = c.role === "PIL" ? "FO" : c.role === "AVR" ? (m ? m[2].toUpperCase() : "CA") : c.role;
+    var m = String(c.name).match(/^(.*?)\s*-\s*(CA\d+)\s*$/i), nm = String(m ? m[1] : c.name).replace(/\s+/g, " ").trim().toUpperCase(), role = c.role === "PIL" ? "FO" : c.role === "AVR" ? (m ? m[2].toUpperCase() : "CA") : c.role;
     return role + " " + nm;
   });
 }

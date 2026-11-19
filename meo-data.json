@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-31",
+ "updated": "2026-11-17",
  "airports": [
   {
    "icao": "LIPE",
@@ -97,14 +97,7 @@
    "icao": "LIML",
    "iata": "LIN",
    "name": "Milan Linate",
-   "runways": [
-    {
-     "id": "18"
-    },
-    {
-     "id": "36"
-    }
-   ]
+   "runways": []
   },
   {
    "icao": "LFSB",
