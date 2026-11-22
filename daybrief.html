@@ -53,7 +53,7 @@ img.sig{display:block;width:100%;height:auto;border-radius:10px;background:#fff;
 "use strict";
 var AIRPORTS = {"AHO":{"icao":"LIEA","name":"Alghero"},"AMS":{"icao":"EHAM","name":"Amsterdam"},"AOI":{"icao":"LIPY","name":"Ancona"},"ARN":{"icao":"ESSA","name":"Stockholm Arlanda"},"ATH":{"icao":"LGAV","name":"Athens"},"BCN":{"icao":"LEBL","name":"Barcelona"},"BDS":{"icao":"LIBR","name":"Brindisi"},"BER":{"icao":"EDDB","name":"Berlin"},"BGY":{"icao":"LIME","name":"Bergamo"},"BLQ":{"icao":"LIPE","name":"Bologna"},"BRE":{"icao":"EDDW","name":"Bremen"},"BRI":{"icao":"LIBD","name":"Bari"},"BRN":{"icao":"LSZB","name":"Bern"},"BRU":{"icao":"EBBR","name":"Brussels"},"BSL":{"icao":"LFSB","name":"Basel-Mulhouse"},"BUD":{"icao":"LHBP","name":"Budapest"},"BZO":{"icao":"LIPB","name":"Bolzano"},"CAG":{"icao":"LIEE","name":"Cagliari"},"CDG":{"icao":"LFPG","name":"Paris Charles de Gaulle"},"CGN":{"icao":"EDDK","name":"Cologne Bonn"},"CIA":{"icao":"LIRA","name":"Rome Ciampino"},"CPH":{"icao":"EKCH","name":"Copenhagen"},"CTA":{"icao":"LICC","name":"Catania"},"CUF":{"icao":"LIMZ","name":"Cuneo"},"DBV":{"icao":"LDDU","name":"Dubrovnik"},"DRS":{"icao":"EDDC","name":"Dresden"},"DUS":{"icao":"EDDL","name":"Duesseldorf"},"FCO":{"icao":"LIRF","name":"Rome Fiumicino"},"FLR":{"icao":"LIRQ","name":"Florence"},"FMM":{"icao":"EDJA","name":"Memmingen"},"FRA":{"icao":"EDDF","name":"Frankfurt"},"GDN":{"icao":"EPGD","name":"Gdansk"},"GOA":{"icao":"LIMJ","name":"Genoa"},"GVA":{"icao":"LSGG","name":"Geneva"},"HAJ":{"icao":"EDDV","name":"Hanover"},"HAM":{"icao":"EDDH","name":"Hamburg"},"IBZ":{"icao":"LEIB","name":"Ibiza"},"INN":{"icao":"LOWI","name":"Innsbruck"},"KRK":{"icao":"EPKK","name":"Krakow"},"KTW":{"icao":"EPKT","name":"Katowice"},"LCY":{"icao":"EGLC","name":"London City"},"LEJ":{"icao":"EDDP","name":"Leipzig"},"LGW":{"icao":"EGKK","name":"London Gatwick"},"LHR":{"icao":"EGLL","name":"London Heathrow"},"LIN":{"icao":"LIML","name":"Milan Linate"},"LIS":{"icao":"LPPT","name":"Lisbon"},"LJU":{"icao":"LJLJ","name":"Ljubljana"},"LYS":{"icao":"LFLL","name":"Lyon"},"MAD":{"icao":"LEMD","name":"Madrid"},"MAN":{"icao":"EGCC","name":"Manchester"},"MRS":{"icao":"LFML","name":"Marseille"},"MUC":{"icao":"EDDM","name":"Munich"},"MXP":{"icao":"LIMC","name":"Milan Malpensa"},"NAP":{"icao":"LIRN","name":"Naples"},"NCE":{"icao":"LFMN","name":"Nice"},"NUE":{"icao":"EDDN","name":"Nuremberg"},"OLB":{"icao":"LIEO","name":"Olbia"},"OPO":{"icao":"LPPR","name":"Porto"},"ORY":{"icao":"LFPO","name":"Paris Orly"},"OSL":{"icao":"ENGM","name":"Oslo"},"PEG":{"icao":"LIRZ","name":"Perugia"},"PMF":{"icao":"LIMP","name":"Parma"},"PMI":{"icao":"LEPA","name":"Palma de Mallorca"},"PMO":{"icao":"LICJ","name":"Palermo"},"POZ":{"icao":"EPPO","name":"Poznan"},"PRG":{"icao":"LKPR","name":"Prague"},"PSA":{"icao":"LIRP","name":"Pisa"},"PUY":{"icao":"LDPL","name":"Pula"},"RMI":{"icao":"LIPR","name":"Rimini"},"SPU":{"icao":"LDSP","name":"Split"},"STN":{"icao":"EGSS","name":"London Stansted"},"STR":{"icao":"EDDS","name":"Stuttgart"},"SUF":{"icao":"LICA","name":"Lamezia Terme"},"SZG":{"icao":"LOWS","name":"Salzburg"},"TLS":{"icao":"LFBO","name":"Toulouse"},"TPS":{"icao":"LICT","name":"Trapani"},"TRN":{"icao":"LIMF","name":"Turin"},"TRS":{"icao":"LIPQ","name":"Trieste"},"TSF":{"icao":"LIPH","name":"Treviso"},"UDN":{"icao":"LIPD","name":"Udine"},"VBS":{"icao":"LIPO","name":"Brescia"},"VCE":{"icao":"LIPZ","name":"Venice"},"VIE":{"icao":"LOWW","name":"Vienna"},"VRN":{"icao":"LIPX","name":"Verona"},"WAW":{"icao":"EPWA","name":"Warsaw Chopin"},"WRO":{"icao":"EPWR","name":"Wroclaw"},"ZAG":{"icao":"LDZA","name":"Zagreb"},"ZRH":{"icao":"LSZH","name":"Zurich"}};
 var DKEY = "briefing.deck.v1", NKEY = "notices.v1", SKEY = "daybrief.sigwx.v1";
-var D = {cards: [], rot: {}, crews: {}}, NOTICES = [], WX = null, WXSTATE = "loading", DATE = "", SIGWX = "", NOW = function(){ return Date.now(); };
+var D = {cards: [], rot: {}, crews: {}}, NOTICES = [], WX = null, WXSTATE = "loading", DATE = "", SIGWX = "", SIGAUTO = null, NOW = function(){ return Date.now(); };
 
 function esc(s){ return String(s == null ? "" : s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
 function tc(s){ return String(s || "").toLowerCase().replace(/(^|[\s'\-])(\S)/g, function(m, a, b){ return a + b.toUpperCase(); }).replace(/\s+/g, " ").trim(); }
@@ -180,6 +180,17 @@ function loadWeather(){
   })();
 }
 
+function loadSigwx(){
+  var list = weatherUrls().map(function(u){ return u.replace("weather.json", "sigwx.json"); });
+  (function next(){
+    var u = list.shift(); if(!u) return;
+    fetch(u, {cache: "no-cache"}).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){
+      if(!j || !j.file) throw 0;
+      SIGAUTO = {url: u.replace("sigwx.json", j.file) + "?v=" + encodeURIComponent(j.fetched || ""), label: j.label || "", fetched: j.fetched || ""}; render();
+    }).catch(next);
+  })();
+}
+
 /* ---------- notices ---------- */
 function noticesFor(date, airports){
   var codes = {}; airports.forEach(function(a){ codes[a.toUpperCase()] = 1; var i = icaoOf(a); if(i) codes[i] = 1; });
@@ -255,11 +266,14 @@ function wxPanel(m){
   return h + '</div></div>';
 }
 function sigwxPanel(){
-  var h = '<div class="panel"><h2>Significant weather chart, Europe</h2>';
-  if(SIGWX) h += '<img class="sig" src="' + esc(SIGWX) + '" alt="Significant weather chart" onerror="this.outerHTML=\'<p class=&quot;err&quot;>The chart could not be loaded from this address.</p>\'"><div class="row2"><a class="btn small" target="_blank" rel="noopener" href="' + esc(SIGWX) + '">Open full size</a></div>';
-  else h += '<p class="hint" style="margin:0 0 10px">No chart address set. Paste the address of the chart image you use for the Europe SIGWX chart below.</p>';
-  h += '<div class="row2"><input id="sigurl" type="url" placeholder="Address of the chart image" value="' + esc(SIGWX) + '" autocapitalize="off" autocorrect="off"><button class="btn small" type="button" id="sigsave">Save address</button></div>' +
-    '<div class="row2"><a class="btn small" target="_blank" rel="noopener" href="https://aviationweather.gov/sigwx">Open aviationweather.gov SIGWX page</a></div></div>';
+  var h = '<div class="panel"><h2>Significant weather chart, Europe</h2>', src = SIGWX || (SIGAUTO && SIGAUTO.url) || "";
+  if(src){
+    h += '<img class="sig" src="' + esc(src) + '" alt="Significant weather chart" onerror="this.outerHTML=\'<p class=&quot;err&quot;>The chart could not be loaded.</p>\'">';
+    if(!SIGWX && SIGAUTO) h += '<p class="hint" style="margin:8px 0 0">' + esc(SIGAUTO.label) + '. Source: Meteo Aeronautica Militare, updated automatically.</p>';
+    h += '<div class="row2"><a class="btn small" target="_blank" rel="noopener" href="' + esc(src) + '">Open full size</a></div>';
+  } else h += '<p class="hint" style="margin:0 0 10px">The automatic chart is not available yet. It appears after the weather Action has run once with the new files.</p>';
+  h += '<details style="margin-top:10px"><summary class="sub">Use my own chart address instead (optional)</summary><div class="row2"><input id="sigurl" type="url" placeholder="Address of the chart image" value="' + esc(SIGWX) + '" autocapitalize="off" autocorrect="off"><button class="btn small" type="button" id="sigsave">Save address</button></div></details>' +
+    '<div class="row2"><a class="btn small" target="_blank" rel="noopener" href="https://www.meteoam.it/it/swll">Open Meteo Aeronautica charts page</a></div></div>';
   return h;
 }
 function noticesPanel(m){
@@ -299,7 +313,7 @@ document.addEventListener("click", function(e){
   })(["background.jpg","background.jpeg","background.png","background.webp","Background.jpg","background.JPG","background.JPEG","background.PNG"]);
   var d = jget(DKEY, null); if(d && d.cards) D = {cards: d.cards, rot: d.rot || {}, crews: d.crews || {}};
   NOTICES = jget(NKEY, []) || []; SIGWX = jget(SKEY, "") || "";
-  render(); loadWeather();
+  render(); loadWeather(); loadSigwx();
 })();
 window.__t = {model: model, decodeMetar: decodeMetar, tcls: tcls, crewChanges: crewChanges, noticesFor: noticesFor, obsAge: obsAge, setNow: function(f){ NOW = f; }, setWx: function(w){ WX = w; WXSTATE = "ok"; render(); }};
 </script>
