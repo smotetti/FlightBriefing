@@ -53,7 +53,7 @@ img.sig{display:block;width:100%;height:auto;border-radius:10px;background:#fff;
 "use strict";
 var AIRPORTS = {"AHO":{"icao":"LIEA","name":"Alghero"},"AMS":{"icao":"EHAM","name":"Amsterdam"},"AOI":{"icao":"LIPY","name":"Ancona"},"ARN":{"icao":"ESSA","name":"Stockholm Arlanda"},"ATH":{"icao":"LGAV","name":"Athens"},"BCN":{"icao":"LEBL","name":"Barcelona"},"BDS":{"icao":"LIBR","name":"Brindisi"},"BER":{"icao":"EDDB","name":"Berlin"},"BGY":{"icao":"LIME","name":"Bergamo"},"BLQ":{"icao":"LIPE","name":"Bologna"},"BRE":{"icao":"EDDW","name":"Bremen"},"BRI":{"icao":"LIBD","name":"Bari"},"BRN":{"icao":"LSZB","name":"Bern"},"BRU":{"icao":"EBBR","name":"Brussels"},"BSL":{"icao":"LFSB","name":"Basel-Mulhouse"},"BUD":{"icao":"LHBP","name":"Budapest"},"BZO":{"icao":"LIPB","name":"Bolzano"},"CAG":{"icao":"LIEE","name":"Cagliari"},"CDG":{"icao":"LFPG","name":"Paris Charles de Gaulle"},"CGN":{"icao":"EDDK","name":"Cologne Bonn"},"CIA":{"icao":"LIRA","name":"Rome Ciampino"},"CPH":{"icao":"EKCH","name":"Copenhagen"},"CTA":{"icao":"LICC","name":"Catania"},"CUF":{"icao":"LIMZ","name":"Cuneo"},"DBV":{"icao":"LDDU","name":"Dubrovnik"},"DRS":{"icao":"EDDC","name":"Dresden"},"DUS":{"icao":"EDDL","name":"Duesseldorf"},"FCO":{"icao":"LIRF","name":"Rome Fiumicino"},"FLR":{"icao":"LIRQ","name":"Florence"},"FMM":{"icao":"EDJA","name":"Memmingen"},"FRA":{"icao":"EDDF","name":"Frankfurt"},"GDN":{"icao":"EPGD","name":"Gdansk"},"GOA":{"icao":"LIMJ","name":"Genoa"},"GVA":{"icao":"LSGG","name":"Geneva"},"HAJ":{"icao":"EDDV","name":"Hanover"},"HAM":{"icao":"EDDH","name":"Hamburg"},"IBZ":{"icao":"LEIB","name":"Ibiza"},"INN":{"icao":"LOWI","name":"Innsbruck"},"KRK":{"icao":"EPKK","name":"Krakow"},"KTW":{"icao":"EPKT","name":"Katowice"},"LCY":{"icao":"EGLC","name":"London City"},"LEJ":{"icao":"EDDP","name":"Leipzig"},"LGW":{"icao":"EGKK","name":"London Gatwick"},"LHR":{"icao":"EGLL","name":"London Heathrow"},"LIN":{"icao":"LIML","name":"Milan Linate"},"LIS":{"icao":"LPPT","name":"Lisbon"},"LJU":{"icao":"LJLJ","name":"Ljubljana"},"LYS":{"icao":"LFLL","name":"Lyon"},"MAD":{"icao":"LEMD","name":"Madrid"},"MAN":{"icao":"EGCC","name":"Manchester"},"MRS":{"icao":"LFML","name":"Marseille"},"MUC":{"icao":"EDDM","name":"Munich"},"MXP":{"icao":"LIMC","name":"Milan Malpensa"},"NAP":{"icao":"LIRN","name":"Naples"},"NCE":{"icao":"LFMN","name":"Nice"},"NUE":{"icao":"EDDN","name":"Nuremberg"},"OLB":{"icao":"LIEO","name":"Olbia"},"OPO":{"icao":"LPPR","name":"Porto"},"ORY":{"icao":"LFPO","name":"Paris Orly"},"OSL":{"icao":"ENGM","name":"Oslo"},"PEG":{"icao":"LIRZ","name":"Perugia"},"PMF":{"icao":"LIMP","name":"Parma"},"PMI":{"icao":"LEPA","name":"Palma de Mallorca"},"PMO":{"icao":"LICJ","name":"Palermo"},"POZ":{"icao":"EPPO","name":"Poznan"},"PRG":{"icao":"LKPR","name":"Prague"},"PSA":{"icao":"LIRP","name":"Pisa"},"PUY":{"icao":"LDPL","name":"Pula"},"RMI":{"icao":"LIPR","name":"Rimini"},"SPU":{"icao":"LDSP","name":"Split"},"STN":{"icao":"EGSS","name":"London Stansted"},"STR":{"icao":"EDDS","name":"Stuttgart"},"SUF":{"icao":"LICA","name":"Lamezia Terme"},"SZG":{"icao":"LOWS","name":"Salzburg"},"TLS":{"icao":"LFBO","name":"Toulouse"},"TPS":{"icao":"LICT","name":"Trapani"},"TRN":{"icao":"LIMF","name":"Turin"},"TRS":{"icao":"LIPQ","name":"Trieste"},"TSF":{"icao":"LIPH","name":"Treviso"},"UDN":{"icao":"LIPD","name":"Udine"},"VBS":{"icao":"LIPO","name":"Brescia"},"VCE":{"icao":"LIPZ","name":"Venice"},"VIE":{"icao":"LOWW","name":"Vienna"},"VRN":{"icao":"LIPX","name":"Verona"},"WAW":{"icao":"EPWA","name":"Warsaw Chopin"},"WRO":{"icao":"EPWR","name":"Wroclaw"},"ZAG":{"icao":"LDZA","name":"Zagreb"},"ZRH":{"icao":"LSZH","name":"Zurich"}};
 var DKEY = "briefing.deck.v1", NKEY = "notices.v1", SKEY = "daybrief.sigwx.v1";
-var D = {cards: [], rot: {}, crews: {}}, NOTICES = [], WX = null, WXSTATE = "loading", DATE = "", SIGWX = "", SIGAUTO = null, NOW = function(){ return Date.now(); };
+var D = {cards: [], rot: {}, crews: {}}, NOTICES = [], WX = null, WXSTATE = "loading", DATE = "", SIGWX = "", SIGAUTO = null, LIVE = "", NOW = function(){ return Date.now(); };
 
 function esc(s){ return String(s == null ? "" : s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
 function tc(s){ return String(s || "").toLowerCase().replace(/(^|[\s'\-])(\S)/g, function(m, a, b){ return a + b.toUpperCase(); }).replace(/\s+/g, " ").trim(); }
@@ -167,6 +167,37 @@ function obsAge(obs){
   return Math.round((n.getTime() - c) / 60000);
 }
 function icaoOf(code){ var a = AIRPORTS[String(code).toUpperCase()]; return a ? a.icao : ""; }
+function liveWeather(){
+  if(!WX) return;
+  var seen = {}, ids = [], API = "https://aviationweather.gov/api/data/";
+  Object.keys(AIRPORTS).forEach(function(k){ var c = AIRPORTS[k].icao; if(c && !seen[c]){ seen[c] = 1; ids.push(c); } });
+  var chunks = []; for(var i = 0; i < ids.length; i += 40) chunks.push(ids.slice(i, i + 40).join(","));
+  function get(kind, extra, c){ return fetch(API + kind + "?ids=" + c + "&format=raw" + extra, {cache: "no-store"}).then(function(r){ if(!r.ok) throw 0; return r.text(); }); }
+  var best = {}, tafs = {};
+  Promise.all(chunks.map(function(c){
+    return get("metar", "&hours=3", c).then(function(t){
+      t.split(/\r?\n/).forEach(function(line){
+        line = line.trim().replace(/^(METAR|SPECI)\s+/, ""); var tk = line.split(/\s+/), m = /^(\d\d)(\d\d)(\d\d)Z$/.exec(tk[1] || "");
+        if(tk.length < 3 || !/^[A-Z]{4}$/.test(tk[0]) || !m) return;
+        var age = obsAge({day: +m[1], hour: +m[2], min: +m[3]});
+        if(!best[tk[0]] || age < best[tk[0]].age) best[tk[0]] = {age: age, raw: line};
+      });
+    }).then(function(){ return get("taf", "", c).then(function(t){
+      var cur = null;
+      t.split(/\r?\n/).forEach(function(line){
+        if(!line.trim()) return;
+        if(!/^\s/.test(line) && /^(TAF\s+)?(AMD\s+|COR\s+)?[A-Z]{4}\s+\d{6}Z/.test(line.trim())){ cur = [line.trim()]; var m = /^(?:TAF\s+)?(?:AMD\s+|COR\s+)?([A-Z]{4})\s/.exec(line.trim() + " "); if(m && !tafs[m[1]]) tafs[m[1]] = cur; else cur = null; }
+        else if(cur) cur.push(line.trim());
+      });
+    }).catch(function(){}); });
+  })).then(function(){
+    var n = Object.keys(best).length; if(!n) throw 0;
+    var w = JSON.parse(JSON.stringify(WX)); w.metar = w.metar || {}; w.taf = w.taf || {};
+    Object.keys(best).forEach(function(k){ w.metar[k] = {raw: best[k].raw}; });
+    Object.keys(tafs).forEach(function(k){ w.taf[k] = {raw: tafs[k].join("\n")}; });
+    w.generated = new Date(NOW()).toISOString().replace(/\.\d+Z$/, "Z"); WX = w; LIVE = "ok"; render();
+  }).catch(function(){ LIVE = "failed"; render(); });
+}
 function weatherUrls(){
   var h = location.hostname, repo = location.pathname.split("/")[1], u = [];
   if(/\.github\.io$/i.test(h) && repo && !/\.html?$/i.test(repo)){ var o = h.split(".")[0]; u.push("https://raw.githubusercontent.com/" + o + "/" + repo + "/main/weather.json", "https://raw.githubusercontent.com/" + o + "/" + repo + "/master/weather.json"); }
@@ -176,7 +207,7 @@ function loadWeather(){
   var list = weatherUrls().slice();
   (function next(){
     var u = list.shift(); if(!u){ WXSTATE = "none"; render(); return; }
-    fetch(u, {cache: "no-cache"}).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){ if(!j || !j.metar) throw 0; WX = j; WXSTATE = "ok"; render(); }).catch(next);
+    fetch(u, {cache: "no-cache"}).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){ if(!j || !j.metar) throw 0; WX = j; WXSTATE = "ok"; render(); liveWeather(); }).catch(next);
   })();
 }
 
@@ -247,8 +278,10 @@ function aircraftPanel(m){
 function wxPanel(m){
   var h = '<div class="panel"><h2>Weather</h2>';
   if(WXSTATE === "ok" && WX){
-    var gen = WX.generated ? ' Fetched ' + esc(WX.generated.replace("T", " ").replace(/:\d\dZ$/, "Z")) + '.' : "";
-    h += '<p class="hint" style="margin:0 0 10px">METAR and TAF from aviationweather.gov, refreshed every half hour.' + gen + ' This is an overview, not a replacement for the official briefing.</p><div class="cols">';
+    var gen = WX.generated ? esc(WX.generated.replace("T", " ").replace(/:\d\dZ$/, "Z")) : "", fa = WX.generated ? Math.round((NOW() - Date.parse(WX.generated)) / 60000) : null, st;
+    if(LIVE === "ok") st = 'Live from aviationweather.gov, ' + gen + '.';
+    else st = 'From the saved weather file, fetched ' + gen + (fa !== null && fa > 60 ? ' (<b class="err">' + fa + ' min old</b>)' : '') + '.' + (LIVE === "failed" ? ' The live update did not work on this network.' : '');
+    h += '<p class="hint" style="margin:0 0 10px">METAR and TAF. ' + st + ' This is an overview, not a replacement for the official briefing.</p><div class="row2"><button class="btn small" type="button" id="wxrefresh">Refresh weather</button></div><div class="cols">';
   } else h += '<p class="hint" style="margin:0 0 10px">' + (WXSTATE === "loading" ? "Loading weather..." : "The automatic weather file is not set up yet. Use the links below.") + '</p><div class="cols">';
   m.airports.forEach(function(a){
     var ic = icaoOf(a), me = WX && WX.metar && WX.metar[ic], ta = WX && WX.taf && WX.taf[ic];
@@ -301,6 +334,7 @@ function render(){
 document.addEventListener("click", function(e){
   var t = e.target.closest("button"); if(!t) return;
   if(t.dataset.date){ DATE = t.dataset.date; render(); return; }
+  if(t.id === "wxrefresh"){ LIVE = ""; loadWeather(); return; }
   if(t.id === "sigsave"){ SIGWX = document.getElementById("sigurl").value.trim(); try{ localStorage.setItem(SKEY, JSON.stringify(SIGWX)); }catch(x){} render(); }
 });
 (function init(){
